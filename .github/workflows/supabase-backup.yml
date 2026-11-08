@@ -29,7 +29,8 @@ jobs:
       - name: Dump database schema (no customer data)
         run: |
           mkdir -p supabase/schema
-          supabase db dump --db-url "postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-ca-central-1.pooler.supabase.com:5432/postgres" -f supabase/schema/schema.sql
+          supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase db dump --linked -f supabase/schema/schema.sql
       - name: Commit changes
         run: |
           git config user.name "sparrow-backup"
