@@ -1,8 +1,10 @@
 name: Supabase backup
 
+# Off by default: the edge functions and database live in Supabase.
+# To turn on nightly backups later, add the two secrets (see README) and put this back:
+#   schedule:
+#     - cron: "17 10 * * *"   # every day, ~3am Vancouver
 on:
-  schedule:
-    - cron: "17 10 * * *"   # every day, ~3am Vancouver
   workflow_dispatch: {}
 
 permissions:

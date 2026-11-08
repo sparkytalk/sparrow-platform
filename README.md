@@ -42,7 +42,7 @@ The key inside the web pages (`sb_publishable_…`) is the public key; access is
 
 ## Backups
 
-`.github/workflows/supabase-backup.yml` runs every night and commits the current edge functions and database schema into `supabase/`. It needs two repository secrets (Settings → Secrets and variables → Actions):
+The edge functions and database are kept in Supabase (not copied here). `.github/workflows/supabase-backup.yml` can copy them into `supabase/` on demand; it is switched off and needs two repository secrets (Settings → Secrets and variables → Actions):
 - `SUPABASE_ACCESS_TOKEN` — from https://supabase.com/dashboard/account/tokens
 - `SUPABASE_DB_PASSWORD` — the database password (Supabase → Project Settings → Database)
 
