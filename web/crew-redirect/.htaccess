@@ -1,0 +1,3 @@
+# crew.sparrowlabs.ca moved into the Sparrow Pros app
+RewriteEngine On
+RewriteRule ^ https://pros.sparrowlabs.ca/ [R=302,L]

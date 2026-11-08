@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Sparrow Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Sparrow admin: black-and-white tool chrome, colour only for status. Sidebar on wide screens, top tabs on phones. */
+:root {
+  --surface: #ffffff; --soft: #f4f4f4; --line: #e3e3e3; --ink: #0a0a0a; --muted: #6b6b6b; --faint: #8f8f8f;
+  --fill: #0a0a0a; --on-fill: #ffffff; --hover: #fafafa;
+  --ok: #1f7a3a; --ok-soft: #e8f3eb; --warn: #9a6700; --warn-soft: #fbf1dc; --bad: #b3261e; --bad-soft: #fbe9e7;
+  --bubble-in: #ffffff; --bubble-out: #f0f0f0;
+  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body: Geist, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r-sm: 8px; --r-lg: 14px; --r-full: 999px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --surface: #0b0b0b; --soft: #161616; --line: #2a2a2a; --ink: #f2f2f2; --muted: #9a9a9a; --faint: #777777;
+  --fill: #f2f2f2; --on-fill: #0b0b0b; --hover: #121212;
+  --ok: #6fd38e; --ok-soft: #12261a; --warn: #e8b64a; --warn-soft: #2a2110; --bad: #ff8a80; --bad-soft: #2c1512;
+  --bubble-in: #161616; --bubble-out: #222222;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--soft); color: var(--ink); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+a { color: var(--ink); text-underline-offset: 2px; }
+.bird { width: 30px; height: auto; display: block; color: var(--ink); flex: none; }
+.lbl, .facts dt, .kv dt, table.ins th, .field > .cap { font: 400 11px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* login */
+.login { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; background: var(--surface); }
+.login-card { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
+.login-card .brand { margin-bottom: 8px; }
+.login-card h1 { font: 700 2.25rem/1.05 var(--display); letter-spacing: -.025em; margin: 0; }
+.login-card .btn.primary { padding: 12px 18px; font-size: .9375rem; }
+.field { display: flex; flex-direction: column; gap: 6px; font: 400 11px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.field input, .field select, .field textarea { font: 400 .9375rem/1.4 var(--body); letter-spacing: 0; text-transform: none; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-sm); padding: 10px 12px; color: var(--ink); width: 100%; }
+.field input:focus, .field select:focus, .field textarea:focus, .search:focus { outline: none; border-color: var(--ink); }
+.field .sub, .field span.sub { font: 400 .8125rem var(--body); letter-spacing: 0; text-transform: none; }
+.err { color: var(--bad); font-size: .8125rem; min-height: 1.2em; }
+
+/* brand */
+.brand { display: flex; align-items: center; gap: 10px; }
+.wordmark { font: 800 26px/1 var(--display); letter-spacing: -.02em; margin: 0; }
+.tagline { font: 400 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-top: 6px; }
+
+/* shell: sidebar on wide screens */
+.app { height: 100%; display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 0; }
+.side { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; padding: 22px 14px 18px; min-height: 0; overflow-y: auto; }
+.side .brand { padding: 0 8px; }
+.tabs { display: flex; flex-direction: column; gap: 2px; }
+.tab { border: 0; background: none; padding: 10px 12px; cursor: pointer; font-weight: 500; color: var(--muted); border-radius: var(--r-full); white-space: nowrap; display: flex; gap: 8px; align-items: center; text-align: left; width: 100%; }
+.tab:hover { color: var(--ink); background: var(--soft); }
+.tab[aria-selected="true"] { color: var(--on-fill); background: var(--fill); font-weight: 600; }
+.badge { margin-left: auto; background: var(--bad); color: #fff; font: 600 11px/18px var(--body); border-radius: var(--r-full); padding: 0 7px; min-width: 20px; text-align: center; }
+.tab[aria-selected="true"] .badge { background: var(--on-fill); color: var(--fill); }
+.badge:empty { display: none; }
+.who { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px 8px 0; border-top: 1px solid var(--line); font-size: .8125rem; color: var(--muted); min-width: 0; }
+.who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who .btn { align-self: flex-start; }
+.view { min-height: 0; min-width: 0; overflow-y: auto; }
+
+/* controls */
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-full); padding: 8px 16px; cursor: pointer; font-weight: 600; font-size: .875rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--ink); white-space: nowrap; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--fill); color: var(--on-fill); border-color: var(--fill); }
+.btn.primary:hover { opacity: .88; }
+.btn.danger { color: var(--bad); }
+.btn.danger:hover { border-color: var(--bad); }
+.btn[disabled] { opacity: .45; cursor: default; }
+.page { max-width: 1040px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.pagehead { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.pagehead h2 { font: 700 2.25rem/1.05 var(--display); letter-spacing: -.025em; margin: 0; }
+@media (max-width: 900px) { .pagehead h2 { font-size: 1.75rem; } }
+.inhouse { display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--line); padding-top: 12px; cursor: pointer; }
+.inhouse input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--fill); flex: none; }
+.assignbox { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.assignbox .lbl { color: var(--warn); }
+.assignrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.assignrow select { flex: 1 1 240px; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-full); padding: 9px 14px; color: var(--ink); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar .grow { flex: 1; min-width: 200px; }
+.search { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-full); padding: 10px 16px; color: var(--ink); }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-full); padding: 7px 14px; font-size: .8125rem; font-weight: 500; cursor: pointer; color: var(--muted); }
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--fill); border-color: var(--fill); color: var(--on-fill); font-weight: 600; }
+
+/* cards and rows */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card > .title:first-child { font: 700 1.125rem/1.25 var(--display); letter-spacing: -.01em; }
+.row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.row .grow { flex: 1; min-width: 0; }
+.title { font-weight: 600; }
+.title .mono { color: var(--muted); }
+.sub { color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.thumbs a { display: block; aspect-ratio: 1 / 1; max-width: 100%; border-radius: 8px; overflow: hidden; background: var(--line); position: relative; }
+.thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs span { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.6); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; }
+.mono { font-family: var(--mono); font-size: .8125em; letter-spacing: .02em; }
+.pill { font: 600 11px/1.6 var(--body); border-radius: var(--r-full); padding: 1px 10px; white-space: nowrap; background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+.pill.good { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.pill.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.pill.crit { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.pill.info { background: var(--soft); color: var(--ink); border-color: var(--line); }
+.price { font: 700 1.125rem var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.edit { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--line); }
+.edit .full { grid-column: 1 / -1; }
+.empty { text-align: center; color: var(--muted); padding: 48px 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r-lg); }
+.empty h3 { color: var(--ink); font: 700 1.25rem var(--display); letter-spacing: -.01em; margin: 0 0 4px; }
+.notice { padding: 12px 14px; border-radius: var(--r-sm); font-size: .875rem; background: var(--bad-soft); color: var(--bad); }
+
+/* customers split */
+.split { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); height: 100%; min-height: 0; }
+.rail { border-right: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.rail-head { padding: 16px; border-bottom: 1px solid var(--line); }
+.list { list-style: none; margin: 0; padding: 8px; overflow-y: auto; flex: 1; }
+.crow { width: 100%; text-align: left; border: 0; background: none; border-radius: var(--r-sm); padding: 10px 12px; cursor: pointer; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.crow:hover { background: var(--hover); }
+.crow[aria-current="true"] { background: var(--soft); }
+.avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--fill); color: var(--on-fill); font-weight: 600; font-size: .8125rem; }
+.crow .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crow .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crow .meta { font-size: 11px; color: var(--faint); text-align: right; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.count { font: 500 11px var(--mono); border: 1px solid var(--line); border-radius: var(--r-full); padding: 0 7px; color: var(--muted); }
+.detail { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.cust { background: var(--surface); border-bottom: 1px solid var(--line); padding: 18px 24px; display: flex; flex-direction: column; gap: 12px; }
+.cust h2 { font: 700 1.6rem/1.1 var(--display); letter-spacing: -.02em; margin: 0; overflow-wrap: anywhere; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: .875rem; margin: 0; }
+.facts div { display: flex; flex-direction: column; gap: 2px; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.back { display: none; }
+.thread { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px 32px; }
+.thread-in { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.conv { margin: 20px 0 8px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.conv:first-child { margin-top: 0; }
+.conv-date { font: 400 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-full); padding: 4px 12px; }
+.conv details { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 14px; }
+.conv summary { cursor: pointer; font-weight: 600; }
+.conv details p { margin: 8px 0 0; color: var(--muted); font-size: .8125rem; }
+.msg { display: flex; flex-direction: column; max-width: min(78%, 560px); }
+.msg.in { align-self: flex-start; }
+.msg.out { align-self: flex-end; align-items: flex-end; }
+.bubble { padding: 9px 13px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.in .bubble { background: var(--bubble-in); border: 1px solid var(--line); border-top-left-radius: 4px; }
+.msg.out .bubble { background: var(--bubble-out); border-top-right-radius: 4px; }
+.time { font: 400 11px var(--mono); color: var(--faint); padding: 3px 4px 0; }
+.tool { align-self: flex-end; font: 400 11px var(--mono); letter-spacing: .04em; color: var(--muted); padding: 2px 4px; }
+.tool::before { content: "\2192  "; }
+
+.grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.grid-form .full { grid-column: 1 / -1; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.checks label { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: var(--r-full); padding: 6px 12px; font: 500 .8125rem var(--body); letter-spacing: 0; text-transform: none; color: var(--ink); background: var(--surface); cursor: pointer; }
+.checks input { accent-color: var(--fill); }
+.linkbox { font: 400 .8125rem var(--mono); background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; overflow-wrap: anywhere; user-select: all; }
+.doclist { display: flex; flex-direction: column; gap: 8px; }
+.docrow { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+.kv { display: grid; grid-template-columns: minmax(130px, auto) minmax(0, 1fr); gap: 8px 16px; font-size: .9375rem; margin: 0; align-items: baseline; }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px 18px; display: flex; flex-direction: column-reverse; gap: 6px; }
+.tile b { display: block; font: 800 2rem/1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tile span { font: 400 11px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table.ins { width: 100%; border-collapse: collapse; font-size: .875rem; }
+table.ins th { text-align: left; font-weight: 400; padding: 8px; border-bottom: 1px solid var(--ink); }
+table.ins td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.barcell { min-width: 140px; }
+.meter { height: 6px; border-radius: var(--r-full); background: var(--fill); }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; border: 1px solid var(--line); }
+#toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fill); color: var(--on-fill); padding: 10px 18px; border-radius: var(--r-full); font-size: .875rem; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; max-width: calc(100% - 32px); }
+#toast.show { opacity: 1; }
+
+/* phones and small tablets: top bar with scrolling tabs */
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 0 0; gap: 10px; overflow: visible; display: grid; grid-template-columns: 1fr auto; }
+  .side .brand { padding: 0 0 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .wordmark { font-size: 22px; }
+  .bird { width: 26px; }
+  .who { grid-column: 2; grid-row: 1; margin: 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 0; border: 0; flex-direction: row; align-items: center; }
+  .who span { display: none; }
+  .tabs { grid-column: 1 / -1; flex-direction: row; overflow-x: auto; padding: 0 max(12px, env(safe-area-inset-left, 0px)) 10px; scrollbar-width: none; }
+  .tab { width: auto; padding: 8px 14px; }
+  .badge { margin-left: 2px; }
+  .page { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-top: 18px; }
+}
+@media (max-width: 760px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split.showing .rail { display: none; }
+  .split:not(.showing) .detail { display: none; }
+  .back { display: inline-flex; }
+  .msg { max-width: 88%; }
+  .cust, .thread { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="bird" viewBox="-168 -168 3708 3144"><g fill="currentColor"><g transform="translate(0 2808) scale(0.1 -0.1)"><path d="M23117 28059 c-31 -12 -106 -25 -210 -34 -652 -61 -1350 -242 -2037 -528 -509 -212 -834 -385 -1370 -727 -135 -86 -274 -174 -310 -195 -35 -22 -107 -74 -160 -116 -52 -42 -160 -122 -240 -179 -157 -111 -365 -274 -555 -435 -66 -55 -169 -141 -230 -190 -60 -50 -171 -142 -246 -205 -75 -63 -172 -144 -216 -180 -44 -36 -173 -150 -287 -255 -113 -104 -262 -237 -330 -295 -125 -106 -338 -298 -521 -469 -55 -51 -144 -130 -199 -174 -54 -44 -191 -166 -305 -271 -113 -106 -296 -270 -406 -365 -110 -96 -274 -242 -365 -326 -189 -174 -307 -279 -435 -384 -50 -41 -142 -122 -205 -181 -146 -135 -328 -295 -500 -440 -74 -62 -173 -149 -218 -192 -46 -43 -140 -127 -210 -186 -69 -59 -215 -186 -325 -282 -373 -328 -622 -542 -742 -638 -66 -53 -167 -139 -225 -193 -58 -53 -148 -132 -201 -175 -92 -76 -438 -366 -564 -475 -33 -28 -145 -124 -250 -214 -104 -90 -269 -230 -365 -311 -96 -81 -213 -182 -260 -224 -121 -108 -329 -283 -440 -369 -52 -41 -142 -118 -200 -171 -58 -53 -217 -189 -355 -302 -137 -113 -288 -240 -335 -283 -47 -42 -195 -168 -331 -280 -135 -111 -294 -247 -355 -300 -60 -54 -183 -158 -274 -230 -91 -73 -199 -163 -240 -200 -41 -37 -125 -104 -186 -150 -61 -45 -140 -107 -175 -137 -227 -192 -464 -387 -612 -505 -95 -75 -215 -173 -267 -218 -170 -145 -433 -358 -535 -432 -55 -39 -131 -99 -170 -132 -65 -56 -626 -512 -858 -696 -260 -207 -565 -449 -673 -533 -65 -51 -209 -167 -319 -257 -110 -90 -283 -228 -385 -306 -102 -79 -248 -195 -325 -259 -175 -144 -336 -271 -485 -381 -63 -47 -160 -123 -215 -170 -55 -47 -156 -128 -225 -180 -183 -139 -402 -310 -510 -397 -52 -42 -157 -124 -235 -181 -77 -57 -194 -148 -260 -200 -66 -53 -154 -121 -195 -151 -41 -29 -205 -158 -365 -285 -159 -127 -364 -288 -454 -356 -157 -119 -373 -300 -473 -397 -84 -81 -56 -102 78 -61 92 28 440 170 639 259 88 40 192 85 230 100 39 15 214 89 390 163 176 74 388 160 470 192 83 31 204 82 270 112 66 30 269 115 450 188 182 73 564 232 850 355 286 122 689 291 895 375 733 300 957 393 1155 477 110 47 286 121 390 163 204 82 480 198 855 357 129 55 374 155 545 223 170 68 409 166 530 218 121 52 294 125 384 162 91 37 237 98 325 137 89 38 321 133 516 210 438 172 618 246 880 358 251 108 593 247 720 293 52 19 192 75 310 125 118 50 316 131 440 180 124 50 295 120 380 157 85 36 236 97 335 135 494 187 783 303 1040 415 61 27 214 88 340 136 534 203 739 283 885 344 310 129 788 314 995 385 77 27 205 74 285 105 80 31 215 82 300 112 85 30 250 91 365 135 116 44 307 115 425 158 118 43 316 115 440 160 124 45 342 122 485 170 143 49 419 142 613 208 194 67 423 142 510 167 86 26 240 73 342 105 379 121 710 220 1130 340 835 238 1333 340 1814 370 533 34 795 -115 706 -401 -59 -190 -228 -332 -1001 -842 -151 -100 -306 -206 -343 -235 -37 -29 -140 -104 -229 -166 -813 -565 -1426 -1176 -2467 -2456 -56 -69 -174 -214 -263 -323 -89 -110 -202 -251 -252 -315 -97 -126 -336 -425 -450 -562 -38 -47 -125 -157 -192 -245 -66 -88 -158 -203 -204 -255 -130 -150 -306 -363 -424 -514 -60 -76 -147 -180 -194 -230 -148 -156 -343 -375 -462 -517 -542 -646 -3456 -3588 -6229 -6289 -415 -404 -804 -782 -865 -840 -60 -57 -250 -242 -420 -410 -305 -299 -781 -764 -1259 -1230 -133 -129 -391 -378 -574 -553 -182 -176 -332 -322 -332 -327 0 -4 -48 -50 -107 -101 -120 -103 -686 -658 -1628 -1595 -236 -234 -341 -356 -312 -362 43 -9 378 191 707 423 80 56 208 139 285 185 77 46 309 197 515 335 206 139 418 278 470 311 171 104 673 434 760 499 47 35 164 112 260 172 96 61 367 238 602 394 234 156 651 432 925 613 274 181 732 483 1018 672 286 188 631 419 767 511 137 92 317 214 400 270 84 56 212 142 283 191 72 49 171 113 220 142 119 71 251 159 349 233 43 33 131 93 195 134 64 40 314 206 556 369 242 162 583 389 757 504 174 114 365 244 425 288 59 44 196 137 303 208 107 70 303 205 435 298 132 94 321 225 420 291 235 157 607 412 715 490 47 33 231 162 410 285 179 123 413 285 520 360 107 75 278 192 379 259 102 68 250 172 331 231 185 136 302 213 360 233 49 18 359 79 650 127 1143 191 2478 554 3332 906 987 406 1943 975 2443 1454 61 58 149 140 196 183 144 128 506 528 686 757 66 85 442 654 522 792 177 303 489 1045 608 1442 159 532 201 714 252 1104 41 302 84 820 96 1127 21 556 74 976 176 1375 173 679 567 1356 1061 1822 448 423 665 584 1173 866 665 369 1329 567 2290 681 94 11 247 30 340 41 230 29 844 86 1171 110 193 14 529 55 572 70 47 17 43 50 -10 93 -89 72 -371 245 -698 427 -102 57 -255 144 -340 195 -85 51 -225 129 -310 175 -85 46 -215 119 -287 161 -73 43 -244 140 -380 216 -262 145 -668 388 -843 506 -169 113 -384 337 -680 707 -1087 1360 -2095 2247 -3259 2872 -366 196 -857 398 -1231 506 -242 70 -714 169 -990 206 -270 37 -338 48 -391 62 -97 24 -1017 19 -1082 -7z m4398 -4390 c241 -20 531 -93 772 -195 355 -148 923 -527 923 -614 0 -54 -12 -60 -640 -317 -179 -73 -468 -169 -554 -184 -136 -23 -187 -8 -526 157 -245 119 -484 215 -853 340 -154 53 -440 124 -637 159 -173 31 -207 41 -219 63 -23 45 24 88 235 215 519 310 964 422 1499 376z"/></g></g></symbol></svg>
+
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm">
+    <div class="brand"><svg class="bird" viewBox="-168 -168 3708 3144" aria-hidden="true"><use href="#bird"/></svg><span class="wordmark">Sparrow</span><span class="tagline">Admin</span></div>
+    <h1>Sign in</h1>
+    <label class="field">Email<input id="email" type="email" autocomplete="username" required></label>
+    <label class="field">Password<input id="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit" id="loginBtn">Sign in</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</div>
+
+<div class="app" id="app" hidden>
+  <header class="side">
+    <div class="brand"><svg class="bird" viewBox="-168 -168 3708 3144" aria-hidden="true"><use href="#bird"/></svg><span class="wordmark">Sparrow</span><span class="tagline">Admin</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-go="requests">Requests <span class="badge" id="reqBadge"></span></button>
+      <button class="tab" role="tab" data-go="jobs">Jobs <span class="badge" id="jobBadge"></span></button>
+      <button class="tab" role="tab" data-go="customers">Customers</button>
+      <button class="tab" role="tab" data-go="contractors">Contractors <span class="badge" id="conBadge"></span></button>
+      <button class="tab" role="tab" data-go="insights">Insights</button>
+      <button class="tab" role="tab" data-go="settings">Settings</button>
+    </nav>
+    <div class="who"><span id="whoEmail"></span><button class="btn" type="button" data-go="account">Account</button></div>
+  </header>
+  <main class="view" id="view"></main>
+</div>
+<div id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(() => {
+  const SUPABASE_URL = "https://cskcmpayxaqyqlqhepup.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_kScNmyqH2eLLh24O2czVYA_pViZ08DL"; // public key; access is enforced by database rules
+  const TZ = "America/Vancouver";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const toast = (t) => { const n = $("toast"); n.textContent = t; n.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => n.classList.remove("show"), 2600); };
+
+  // ---------- formatting ----------
+  const fDay = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const fShort = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, weekday: "short", month: "short", day: "numeric" });
+  const fTime = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
+  const fWhen = (iso) => iso ? `${fShort.format(new Date(iso))}, ${fTime.format(new Date(iso))}` : "";
+  const money = (c) => c == null ? "" : "$" + (c / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function phone(wa) {
+    const d = String(wa || "").replace(/\D/g, "");
+    if (d.length === 11 && d[0] === "1") return `+1 ${d.slice(1, 4)}-${d.slice(4, 7)}-${d.slice(7)}`;
+    if (d.length === 12 && d.startsWith("91")) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+    return d ? "+" + d : "";
+  }
+  const cname = (c) => (c && (c.name || phone(c.whatsapp_user_id))) || "Unknown";
+  const initials = (c) => c.name ? c.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() : String(c.whatsapp_user_id || "").slice(-2);
+  function ago(iso) {
+    if (!iso) return "";
+    const s = (Date.now() - Date.parse(iso)) / 1000;
+    if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " h ago"; if (s < 604800) return Math.floor(s / 86400) + " d ago";
+    return fShort.format(new Date(iso));
+  }
+  const TYPE = { homeowner: "Homeowner", property_manager: "Property manager", realtor: "Realtor" };
+  const STATUS = {
+    requested: ["New request", "warn"], quote_visit: ["Site visit", "info"], quoted: ["Quoted", "info"], booked: ["Booked", "info"],
+    offered: ["Offered to contractors", "info"], assigned: ["Assigned", "info"], in_progress: ["In progress", "info"],
+    completed: ["Completed", "good"], closed: ["Closed", "good"], cancelled: ["Cancelled", ""], disputed: ["Problem", "crit"],
+  };
+  const PAY = { unpaid: "Unpaid", deposit_paid: "Deposit paid", paid: "Paid", cash_recorded: "Cash", refunded: "Refunded", partially_refunded: "Part refunded" };
+  const NEXT = {
+    requested: ["quote_visit", "booked", "cancelled"], quote_visit: ["quoted", "cancelled"], quoted: ["booked", "cancelled"],
+    booked: ["offered", "assigned", "cancelled"], offered: ["assigned", "booked", "cancelled"], assigned: ["in_progress", "offered", "cancelled"],
+    in_progress: ["completed"], completed: ["closed", "disputed"], disputed: ["closed"], closed: [], cancelled: [],
+  };
+  const pill = (status) => { const [t, k] = STATUS[status] || [status, ""]; return el("span", "pill " + k, t); };
+  const addr = (p) => p ? [p.unit, p.address_line, p.city].filter(Boolean).join(", ") : "";
+  function linkify(parent, text) {
+    const re = /(https?:\/\/[^\s<>"')]+)/g; let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) parent.append(text.slice(last, m.index));
+      const a = el("a", null, m[1]); a.href = m[1]; a.target = "_blank"; a.rel = "noopener noreferrer"; parent.append(a);
+      last = m.index + m[1].length;
+    }
+    if (last < text.length) parent.append(text.slice(last));
+  }
+  // Vancouver local datetime-input value <-> ISO
+  function toLocalInput(iso) {
+    if (!iso) return "";
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  }
+  function fromLocalInput(v) {
+    if (!v) return null;
+    const guess = new Date(v + ":00Z");
+    const shown = toLocalInput(guess.toISOString());
+    const diff = Date.parse(v + ":00Z") - Date.parse(shown + ":00Z");
+    return new Date(guess.getTime() + diff).toISOString();
+  }
+
+  function fail(host, err) {
+    console.error(err);
+    host.replaceChildren(el("div", "notice", "Couldn't load: " + (err && err.message ? err.message : "unknown error") + ". Try reloading the page."));
+  }
+
+  // ---------- routing ----------
+  const view = $("view");
+  let route = "requests";
+  document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.go; }));
+  window.addEventListener("hashchange", render);
+  function render() {
+    route = (location.hash.slice(1) || "requests").split("-")[0];
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.go === route)));
+    view.replaceChildren();
+    if (route === "jobs") renderJobs();
+    else if (route === "customers") renderCustomers(location.hash.slice(1).split("-").slice(1).join("-") || null);
+    else if (route === "account") renderAccount();
+    else if (route === "contractors") renderContractors(location.hash.slice(1).split("-").slice(1).join("-") || null);
+    else if (route === "settings") renderSettings();
+    else if (route === "insights") renderInsights();
+    else { route = "requests"; renderRequests(); }
+    const TITLES = { requests: ["Requests", "People waiting on you"], jobs: ["Jobs", "Every booking, newest first"], contractors: ["Contractors", "Your network"], insights: ["Insights", "Where demand is coming from"], settings: ["Settings", "Rules for deposits, quotes and fees"], account: ["Account", "Your sign-in"] };
+    const pg = view.querySelector(".page"), t = TITLES[route];
+    if (pg && t && !/^#contractors-./.test(location.hash)) {
+      const h = el("div", "pagehead"); h.append(el("div", "lbl", t[1]), el("h2", null, t[0])); pg.prepend(h);
+    }
+  }
+
+  async function refreshBadges() {
+    const [h, j] = await Promise.all([
+      sb.from("handoffs").select("id", { count: "exact", head: true }).eq("status", "open"),
+      sb.from("jobs").select("id", { count: "exact", head: true }).is("contractor_id", null).neq("fulfilment", "own_vendor").in("status", ["requested", "quote_visit", "quoted", "booked", "offered", "assigned", "in_progress"]),
+    ]);
+    $("reqBadge").textContent = h.count || "";
+    $("jobBadge").textContent = j.count || "";
+    const c = await sb.from("contractors").select("id", { count: "exact", head: true }).eq("status", "submitted");
+    $("conBadge").textContent = c.count || "";
+  }
+
+  // ---------- requests ----------
+  async function renderRequests() {
+    const page = el("div", "page"); view.append(page);
+    const tb = el("div", "toolbar");
+    let showDone = false;
+    const c1 = el("button", "chip", "Open"), c2 = el("button", "chip", "Done");
+    [c1, c2].forEach((c) => { c.type = "button"; });
+    tb.append(c1, c2); page.append(tb);
+    const list = el("div"); list.style.cssText = "display:flex;flex-direction:column;gap:10px"; page.append(list);
+    const load = async () => {
+      c1.setAttribute("aria-pressed", String(!showDone)); c2.setAttribute("aria-pressed", String(showDone));
+      list.replaceChildren(el("div", "sub", "Loading…"));
+      const { data, error } = await sb.from("handoffs")
+        .select("id, kind, reason, status, created_at, resolved_at, customer:customers(id, name, whatsapp_user_id), job:jobs(ref)")
+        .eq("status", showDone ? "done" : "open").order("created_at", { ascending: false }).limit(100);
+      if (error) return fail(list, error);
+      list.replaceChildren();
+      if (!data.length) {
+        const e = el("div", "empty"); e.append(el("h3", null, showDone ? "Nothing here yet" : "All clear"),
+          el("p", null, showDone ? "Requests you mark done show here." : "When a customer asks for a person or reports a problem, Preet puts it here."));
+        return list.append(e);
+      }
+      for (const h of data) {
+        const card = el("div", "card");
+        const top = el("div", "row");
+        const g = el("div", "grow");
+        g.append(el("div", "title", cname(h.customer)), el("div", "sub", [phone(h.customer && h.customer.whatsapp_user_id), ago(h.created_at), h.job && h.job.ref].filter(Boolean).join(" · ")));
+        top.append(g, el("span", "pill " + (h.kind === "problem" ? "crit" : "warn"), h.kind === "problem" ? "Problem" : "Wants a person"));
+        card.append(top);
+        if (h.reason) card.append(el("div", null, h.reason));
+        const btns = el("div", "toolbar");
+        const chat = el("button", "btn", "Open chat"); chat.type = "button";
+        chat.addEventListener("click", () => { location.hash = "customers-" + h.customer.id; });
+        btns.append(chat);
+        if (h.status === "open") {
+          const done = el("button", "btn primary", "Mark done"); done.type = "button";
+          done.addEventListener("click", async () => {
+            done.disabled = true;
+            const { error: e } = await sb.from("handoffs").update({ status: "done", resolved_at: new Date().toISOString() }).eq("id", h.id);
+            if (e) { done.disabled = false; return toast("Couldn't save: " + e.message); }
+            card.remove(); toast("Marked done"); refreshBadges();
+          });
+          btns.append(done);
+        }
+        card.append(btns); list.append(card);
+      }
+    };
+    c1.addEventListener("click", () => { showDone = false; load(); });
+    c2.addEventListener("click", () => { showDone = true; load(); });
+    load();
+  }
+
+  // ---------- jobs ----------
+  async function renderJobs() {
+    const page = el("div", "page"); view.append(page);
+    const tb = el("div", "toolbar");
+    const search = el("input", "search grow"); search.type = "search"; search.placeholder = "Search job number, name, address";
+    const groups = { unassigned: "Needs a contractor", active: "Active", new: "New requests", done: "Completed", cancelled: "Cancelled", all: "All" };
+    let group = "active";
+    const chips = Object.entries(groups).map(([k, t]) => { const c = el("button", "chip", t); c.type = "button"; c.dataset.k = k; return c; });
+    tb.append(search, ...chips); page.append(tb);
+    const list = el("div"); list.style.cssText = "display:flex;flex-direction:column;gap:10px"; page.append(list);
+    let jobs = [];
+
+    const [{ data, error }, cons] = await Promise.all([sb.from("jobs")
+      .select("id, ref, status, service_code, contractor_id, contractor:contractors(id, business_name), quotes(ref, status, total_cents, deposit_cents, chosen_date, valid_until, viewed_at, customer_note, created_at), calendar_events(kind, starts_at, status), date_requests(status, dates, chosen_date, created_at), invoices(number, display_number, status, total_cents, paid_cents, deposit_cents, token), job_photos(id, kind, storage_path, removed_at, created_at), started_at, completed_at, pay_status, pay_method, price_cents, variant, fulfilment, vendor_name, vendor_phone, window_start, window_end, scheduled_start, scheduled_end, notes, details, cancel_reason, created_at, service:services(name, mode), property:properties(address_line, unit, city, postal_code), customer:customers(id, name, whatsapp_user_id, type, company)")
+      .order("created_at", { ascending: false }).limit(300),
+      sb.from("contractors").select("id, business_name, in_house, contractor_services(service_code), contractor_areas(city)").eq("status", "active").order("business_name")]);
+    if (error) return fail(list, error);
+    jobs = data; activeCons = cons.data || [];
+    const nUn = jobs.filter(needsContractor).length;
+    if (nUn) { group = "unassigned"; chips[0].textContent = `Needs a contractor (${nUn})`; }
+
+    const draw = () => {
+      chips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.k === group)));
+      const q = search.value.trim().toLowerCase();
+      const rows = jobs.filter((j) => {
+        if (group === "unassigned" && !needsContractor(j)) return false;
+        if (group === "active" && ["completed", "closed", "cancelled"].includes(j.status)) return false;
+        if (group === "new" && j.status !== "requested") return false;
+        if (group === "done" && !["completed", "closed"].includes(j.status)) return false;
+        if (group === "cancelled" && j.status !== "cancelled") return false;
+        if (!q) return true;
+        return [j.ref, cname(j.customer), j.customer && j.customer.whatsapp_user_id, addr(j.property), j.service && j.service.name].join(" ").toLowerCase().includes(q);
+      });
+      list.replaceChildren();
+      if (!rows.length) {
+        const e = el("div", "empty"); e.append(el("h3", null, group === "unassigned" ? "Every job has a contractor" : "No jobs here"), el("p", null, group === "unassigned" ? "Bookings that no contractor covers show up here for you to assign." : "Jobs Preet books on WhatsApp appear here straight away."));
+        return list.append(e);
+      }
+      rows.forEach((j) => list.append(jobCard(j)));
+    };
+    search.addEventListener("input", draw);
+    chips.forEach((c) => c.addEventListener("click", () => { group = c.dataset.k; draw(); }));
+    draw();
+  }
+
+  let activeCons = [];
+  const OPEN = ["requested", "quote_visit", "quoted", "booked", "offered", "assigned", "in_progress"];
+  const needsContractor = (j) => !j.contractor_id && j.fulfilment !== "own_vendor" && OPEN.includes(j.status);
+  // contractor picker grouped by how well each fits this job
+  function contractorSelect(j) {
+    const sel = el("select");
+    const city = ((j.property && j.property.city) || "").toLowerCase();
+    const offers = (c) => (c.contractor_services || []).some((s) => s.service_code === j.service_code);
+    const covers = (c) => (c.contractor_areas || []).some((a) => (a.city || "").toLowerCase() === city);
+    const best = [], house = [], other = [], outside = [];
+    activeCons.forEach((c) => {
+      if (c.in_house) house.push(c);
+      else if (offers(c) && covers(c)) best.push(c);
+      else if (offers(c)) other.push(c);
+      else outside.push(c);
+    });
+    sel.append(new Option(j.contractor_id ? "No contractor" : "Choose a contractor\u2026", ""));
+    const grp = (label, arr, note) => { if (!arr.length) return; const g = document.createElement("optgroup"); g.label = label; arr.forEach((c) => g.append(new Option(c.business_name + (note ? " \u00b7 " + note(c) : ""), c.id))); sel.append(g); };
+    grp("Offers this service in " + ((j.property && j.property.city) || "this city"), best);
+    grp("In-house", house, (c) => offers(c) ? "offers this service" : "other services");
+    grp("Offers this service, other cities", other, (c) => (c.contractor_areas || []).map((a) => a.city).slice(0, 3).join(", ") || "no cities set");
+    grp("Doesn't list this service", outside);
+    if (j.contractor && !activeCons.some((c) => c.id === j.contractor.id)) sel.append(new Option(j.contractor.business_name + " (not active)", j.contractor.id));
+    sel.value = j.contractor_id || "";
+    sel.hint = best.length ? "" : "No contractor offers this service in this city yet. In-house and other contractors are listed below.";
+    return sel;
+  }
+  async function assign(j, cid) {
+    const { data, error } = await sb.rpc("admin_assign_contractor", { p_job: j.id, p_contractor: cid || null });
+    if (error) throw error;
+    const c = activeCons.find((x) => x.id === cid);
+    toast(cid ? `${j.ref} assigned to ${c ? c.business_name : "contractor"}` : `${j.ref} unassigned`);
+    return data;
+  }
+  function jobCard(j) {
+    const card = el("div", "card");
+    const top = el("div", "row");
+    const g = el("div", "grow");
+    const t = el("div", "title"); t.append(el("span", "mono", j.ref + "  "), (j.service ? j.service.name : j.service_code) + (j.variant && j.variant !== "standard" && j.variant !== "site_visit" ? " · " + j.variant.replace(/_/g, " ") : ""));
+    g.append(t, el("div", "sub", [cname(j.customer), j.customer && TYPE[j.customer.type], j.customer && j.customer.company, addr(j.property)].filter(Boolean).join(" · ")));
+    const right = el("div"); right.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:4px";
+    right.append(pill(j.status));
+    if (j.price_cents != null) right.append(el("span", "price", money(j.price_cents)));
+    else {
+      const lq = (j.quotes || []).filter((q) => q.ref && q.status !== "declined").sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+      if (lq) { right.append(el("span", "price", money(lq.total_cents)), el("span", "sub", "quote incl. GST")); }
+      else right.append(el("span", "sub", j.service && j.service.mode === "site_visit" ? "Needs a quote" : "Price to confirm"));
+    }
+    top.append(g, right); card.append(top);
+
+    const info = [];
+    if (j.scheduled_start) info.push("Scheduled " + fWhen(j.scheduled_start));
+    else if (j.window_start) info.push("Wants " + fShort.format(new Date(j.window_start)) + (j.details && j.details.preferred_time && j.details.preferred_time !== "any" ? " " + j.details.preferred_time : ""));
+    info.push(PAY[j.pay_status] || j.pay_status);
+    if (j.fulfilment !== "own_vendor") info.push(j.contractor ? "Contractor: " + j.contractor.business_name : "No contractor yet");
+    if (j.fulfilment === "own_vendor") info.push("Own vendor" + (j.vendor_name ? ": " + j.vendor_name : "") + (j.vendor_phone ? " " + j.vendor_phone : ""));
+    const visit = (j.calendar_events || []).filter((e) => e.kind === "site_visit" && e.status === "scheduled").sort((a, b) => b.starts_at.localeCompare(a.starts_at))[0];
+    if (visit) info.push("Site visit " + fWhen(visit.starts_at));
+    const dreq = (j.date_requests || []).filter((r) => r.status === "open")[0];
+    if (dreq) info.push("Waiting for customer to pick a new date");
+    if (j.details && j.details.access) info.push("Access: " + j.details.access);
+    info.push("Booked " + ago(j.created_at));
+    card.append(el("div", "sub", info.join(" · ")));
+    if (j.notes) card.append(el("div", null, j.notes));
+    const qs = (j.quotes || []).filter((q) => q.ref || q.status === "draft").sort((a, b) => b.created_at.localeCompare(a.created_at));
+    if (qs.length) {
+      const q = qs[0]; const expired = q.status === "sent" && q.valid_until && q.valid_until < new Date().toLocaleDateString("en-CA", { timeZone: "America/Vancouver" });
+      const word = q.status === "draft" ? "Contractor is writing a quote" : expired ? "expired" : { sent: q.viewed_at ? "sent, opened by customer" : "sent, not opened yet", accepted: "approved" + (q.chosen_date ? " for " + q.chosen_date : ""), declined: "declined" }[q.status] || q.status;
+      const qline = el("div", "sub", q.ref ? `Quote ${q.ref}: ${word} · ${money(q.total_cents)} incl. GST${q.deposit_cents ? " · deposit " + money(q.deposit_cents) : ""}${q.customer_note ? " · \u201c" + q.customer_note + "\u201d" : ""}` : word);
+      qline.style.fontWeight = "600"; card.append(qline);
+    }
+    if (j.cancel_reason) card.append(el("div", "sub", "Cancel reason: " + j.cancel_reason));
+    if (j.started_at && j.status === "in_progress") card.append(el("div", "sub", "Contractor started " + fWhen(j.started_at)));
+    const inv = (j.invoices || []).filter((i) => i.status !== "void")[0];
+    if (inv) {
+      const paidNow = inv.status === "paid" || ["paid", "cash_recorded"].includes(j.pay_status);
+      const il = el("div", "sub"); il.style.fontWeight = "600";
+      il.append(`Invoice ${inv.display_number || inv.number}: ${money(inv.total_cents)} incl. GST · ${paidNow ? (j.pay_status === "cash_recorded" ? "paid in cash" : "paid") : money(Math.max(inv.total_cents - inv.paid_cents, 0)) + " due"} · `);
+      const a = el("a", null, "Open"); a.href = "https://sparrowlabs.ca/invoice/#" + inv.token; a.target = "_blank"; a.rel = "noopener"; il.append(a);
+      card.append(il);
+    }
+    const photos = (j.job_photos || []).filter((p) => !p.removed_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
+    let photoBox = null;
+
+    if (needsContractor(j)) {
+      const box = el("div", "assignbox");
+      const sel = contractorSelect(j); sel.setAttribute("aria-label", "Contractor for " + j.ref);
+      const go = el("button", "btn primary", "Assign"); go.type = "button";
+      const aerr = el("div", "err");
+      go.addEventListener("click", async () => {
+        aerr.textContent = ""; if (!sel.value) return (aerr.textContent = "Choose a contractor first.");
+        go.disabled = true;
+        try { await assign(j, sel.value); refreshBadges(); render(); } catch (e) { aerr.textContent = e.message || String(e); go.disabled = false; }
+      });
+      const r = el("div", "assignrow"); r.append(sel, go);
+      box.append(el("div", "lbl", "Needs a contractor"), r);
+      if (sel.hint) box.append(el("div", "sub", sel.hint));
+      box.append(aerr);
+      card.append(box);
+    }
+    const tools = el("div", "toolbar");
+    const editBtn = el("button", "btn", "Edit"); editBtn.type = "button";
+    const chat = el("button", "btn", "Customer"); chat.type = "button";
+    chat.addEventListener("click", () => { location.hash = "customers-" + j.customer.id; });
+    tools.append(editBtn, chat);
+    if (photos.length) {
+      const pb = el("button", "btn", `Photos (${photos.length})`); pb.type = "button";
+      pb.addEventListener("click", async () => {
+        if (photoBox) { photoBox.remove(); photoBox = null; return; }
+        photoBox = el("div", "thumbs"); tools.after(photoBox);
+        const { data } = await sb.storage.from("job-photos").createSignedUrls(photos.map((p) => p.storage_path), 3600);
+        const urls = {}; (data || []).forEach((x) => { if (x.signedUrl) urls[x.path] = x.signedUrl; });
+        photos.forEach((p) => { const a = el("a"); a.href = urls[p.storage_path] || "#"; a.target = "_blank"; a.rel = "noopener"; const img = el("img"); img.alt = p.kind + " photo"; img.src = urls[p.storage_path] || ""; a.append(img, el("span", null, p.kind)); photoBox.append(a); });
+      });
+      tools.append(pb);
+    }
+    card.append(tools);
+
+    let form = null;
+    editBtn.addEventListener("click", () => {
+      if (form) { form.remove(); form = null; return; }
+      form = el("div", "edit");
+      const stF = el("label", "field", "Move status to"); const st = el("select");
+      st.append(new Option("Keep: " + (STATUS[j.status] || [j.status])[0], ""));
+      (NEXT[j.status] || []).forEach((s) => st.append(new Option((STATUS[s] || [s])[0], s)));
+      stF.append(st);
+      const prF = el("label", "field", "Price before GST ($)"); const pr = el("input"); pr.type = "number"; pr.min = "0"; pr.step = "0.01";
+      pr.value = j.price_cents != null ? (j.price_cents / 100).toFixed(2) : ""; prF.append(pr);
+      const s1F = el("label", "field", "Scheduled start"); const s1 = el("input"); s1.type = "datetime-local"; s1.value = toLocalInput(j.scheduled_start); s1F.append(s1);
+      const s2F = el("label", "field", "Scheduled end"); const s2 = el("input"); s2.type = "datetime-local"; s2.value = toLocalInput(j.scheduled_end); s2F.append(s2);
+      const payF = el("label", "field", "Payment"); const pay = el("select");
+      Object.entries(PAY).forEach(([k, v]) => pay.append(new Option(v, k))); pay.value = j.pay_status; payF.append(pay);
+      const conF = el("label", "field", "Contractor"); const con = contractorSelect(j);
+      con.options[0].text = "No contractor"; conF.append(con);
+      const noteF = el("label", "field full", "Note (saved in the job history)"); const note = el("input"); note.placeholder = "Optional"; noteF.append(note);
+      const err = el("div", "err full");
+      const actions = el("div", "toolbar full");
+      const save = el("button", "btn primary", "Save changes"); save.type = "button";
+      const cancel = el("button", "btn", "Close"); cancel.type = "button";
+      actions.append(save, cancel);
+      form.append(stF, conF, prF, s1F, s2F, payF, noteF, err, actions);
+      card.append(form);
+      cancel.addEventListener("click", () => { form.remove(); form = null; });
+      save.addEventListener("click", async () => {
+        err.textContent = ""; save.disabled = true;
+        try {
+          if ((con.value || null) !== (j.contractor_id || null)) await assign(j, con.value);
+          const patch = {};
+          const cents = pr.value === "" ? null : Math.round(parseFloat(pr.value) * 100);
+          if (cents !== j.price_cents && !(cents != null && isNaN(cents))) patch.price_cents = cents;
+          const ss = fromLocalInput(s1.value), se = fromLocalInput(s2.value);
+          if (ss !== (j.scheduled_start ? new Date(j.scheduled_start).toISOString() : null)) patch.scheduled_start = ss;
+          if (se !== (j.scheduled_end ? new Date(j.scheduled_end).toISOString() : null)) patch.scheduled_end = se;
+          if ((patch.scheduled_start || ss) && (patch.scheduled_end || se) && Date.parse(se) <= Date.parse(ss)) throw new Error("End must be after start.");
+          if (pay.value !== j.pay_status) patch.pay_status = pay.value;
+          if (Object.keys(patch).length) {
+            const { error } = await sb.from("jobs").update(patch).eq("id", j.id);
+            if (error) throw error;
+          }
+          if (st.value) {
+            const { error } = await sb.rpc("set_job_status", { p_job: j.id, p_to: st.value, p_note: note.value || null });
+            if (error) throw error;
+          }
+          toast(j.ref + " saved"); refreshBadges(); render();
+        } catch (e) {
+          err.textContent = e.message || String(e); save.disabled = false;
+        }
+      });
+    });
+    return card;
+  }
+
+  // ---------- customers ----------
+  async function renderCustomers(selected) {
+    const split = el("div", "split"); view.append(split);
+    const rail = el("aside", "rail"); const head = el("div", "rail-head");
+    const search = el("input", "search"); search.type = "search"; search.placeholder = "Search name, phone, company";
+    head.append(search); const list = el("ul", "list"); rail.append(head, list);
+    const detail = el("section", "detail");
+    split.append(rail, detail);
+    if (selected) split.classList.add("showing");
+
+    const { data, error } = await sb.from("customer_overview").select("*").order("last_chat_at", { ascending: false, nullsFirst: false });
+    if (error) return fail(list, error);
+    const draw = () => {
+      const q = search.value.trim().toLowerCase(), qd = q.replace(/\D/g, "");
+      list.replaceChildren();
+      const rows = data.filter((c) => !q || [c.name, c.company, c.email, TYPE[c.type]].filter(Boolean).join(" ").toLowerCase().includes(q) || (qd.length >= 3 && String(c.whatsapp_user_id).includes(qd)));
+      if (!rows.length) { list.append(el("li", "empty", data.length ? "No match." : "No customers yet.")); return; }
+      for (const c of rows) {
+        const li = el("li"); const b = el("button", "crow"); b.type = "button"; b.setAttribute("aria-current", String(c.id === selected));
+        const m = el("div"); m.style.minWidth = "0";
+        m.append(el("div", "name", cname(c)), el("div", "sub", [TYPE[c.type], c.company, c.name ? phone(c.whatsapp_user_id) : null, c.status === "active" ? null : c.status].filter(Boolean).join(" · ") || "Not onboarded"));
+        const meta = el("div", "meta"); meta.append(el("span", null, ago(c.last_chat_at)), el("span", "count", `${c.chat_count || 0} chats · ${c.job_count || 0} jobs`));
+        b.append(el("div", "avatar", initials(c)), m, meta);
+        b.addEventListener("click", () => { location.hash = "customers-" + c.id; });
+        li.append(b); list.append(li);
+      }
+    };
+    search.addEventListener("input", draw); draw();
+    if (selected) loadCustomer(selected, detail, split);
+    else { const e = el("div", "empty"); e.style.margin = "auto"; e.append(el("h3", null, "Pick a customer"), el("p", null, "Their WhatsApp history with Preet shows here.")); detail.append(e); }
+  }
+
+  async function loadCustomer(id, host, split) {
+    host.replaceChildren(el("div", "empty", "Loading chat history…"));
+    const [c, props, jobs, convs] = await Promise.all([
+      sb.from("customers").select("*").eq("id", id).maybeSingle(),
+      sb.from("properties").select("address_line, unit, city").eq("customer_id", id).order("created_at"),
+      sb.from("jobs").select("ref, status, price_cents, service:services(name)").eq("customer_id", id).order("created_at", { ascending: false }).limit(10),
+      sb.from("conversations").select("id, title, summary, started_at, ended_at, direction, messages(role, body, tool_name, sent_at, seq)")
+        .eq("customer_id", id).order("started_at").order("seq", { referencedTable: "messages" }),
+    ]);
+    const err = c.error || props.error || jobs.error || convs.error;
+    if (err) return fail(host, err);
+    if (!c.data) { host.replaceChildren(el("div", "empty", "Customer not found.")); return; }
+    const cu = c.data;
+    host.replaceChildren();
+    const head = el("div", "cust");
+    const top = el("div", "row"); top.style.alignItems = "center";
+    const back = el("button", "btn back", "← Customers"); back.type = "button";
+    back.addEventListener("click", () => { location.hash = "customers"; });
+    top.append(back, el("div", "avatar", initials(cu)), el("h2", null, cname(cu)), el("span", "pill " + (cu.status === "active" ? "good" : cu.status === "blocked" ? "crit" : "warn"), cu.status));
+    const dl = el("dl", "facts");
+    const fact = (k, v) => { const d = el("div"); d.append(el("dt", null, k), el("dd", null, v || "–")); dl.append(d); };
+    fact("WhatsApp", phone(cu.whatsapp_user_id)); fact("Type", TYPE[cu.type]); fact("Company", cu.company); fact("Email", cu.email);
+    fact("Language", { en: "English", pa: "Punjabi", hi: "Hindi" }[cu.language]);
+    fact("Onboarded", cu.onboarded_at ? fShort.format(new Date(cu.onboarded_at)) : "Not yet");
+    fact("Addresses", props.data.map(addr).join(" · ") || "None");
+    head.append(top, dl);
+    if (jobs.data.length) {
+      const jr = el("div", "toolbar");
+      jobs.data.forEach((j) => { const s = el("span", "pill"); s.textContent = `${j.ref} ${j.service ? j.service.name : ""} · ${(STATUS[j.status] || [j.status])[0]}${j.price_cents != null ? " · " + money(j.price_cents) : ""}`; s.style.textTransform = "none"; jr.append(s); });
+      head.append(jr);
+    }
+    const thread = el("div", "thread"); const inner = el("div", "thread-in"); thread.append(inner);
+    if (!convs.data.length) inner.append(el("div", "empty", "No chats yet. New chats appear about 5 minutes after they end."));
+    for (const v of convs.data) {
+      const sep = el("div", "conv");
+      sep.append(el("span", "conv-date", v.started_at ? fDay.format(new Date(v.started_at)) : "Date unknown"));
+      const d = el("details"); d.append(el("summary", null, v.title || "Chat"));
+      if (v.summary) d.append(el("p", null, v.summary));
+      sep.append(d); inner.append(sep);
+      for (const m of v.messages) {
+        if (!m.body && m.tool_name) { inner.append(el("div", "tool", "Preet used " + m.tool_name.replace(/_/g, " "))); continue; }
+        if (!m.body) continue;
+        const w = el("div", "msg " + (m.role === "customer" ? "in" : "out"));
+        const b = el("div", "bubble"); linkify(b, m.body);
+        w.append(b, el("div", "time", m.sent_at ? fTime.format(new Date(m.sent_at)) : ""));
+        inner.append(w);
+      }
+    }
+    host.append(head, thread);
+    requestAnimationFrame(() => { thread.scrollTop = thread.scrollHeight; });
+  }
+
+  // ---------- contractors ----------
+  const C_STATUS = {
+    invited: ["Invited", ""], setting_up: ["Setting up", "warn"], submitted: ["To review", "info"], applied: ["To review", "info"],
+    active: ["Active", "good"], paused: ["Paused", "crit"], suspended: ["Paused", "crit"], left: ["Removed", ""],
+  };
+  const DOC_NAMES = { insurance: "Liability insurance", worksafebc: "WorkSafeBC", licence: "Business licence", photo_id: "Photo ID", other: "Other" };
+  const PROS_URL = "https://pros.sparrowlabs.ca/";
+  const cpill = (s) => { const [t, k] = C_STATUS[s] || [s, ""]; return el("span", "pill " + k, t); };
+  const daysLeft = (d) => d ? Math.round((Date.parse(d + "T12:00:00") - Date.now()) / 86400000) : null;
+  const errMsg = (e) => (e && e.message) || String(e);
+
+  function linkCard(title, token, phoneNum, name) {
+    const url = PROS_URL + "#join-" + token;
+    const box = el("div", "card");
+    box.append(el("div", "title", title), el("div", "sub", "Send this link to the contractor. It works once and expires; you can make a new one any time."));
+    const lb = el("div", "linkbox", url); box.append(lb);
+    const row = el("div", "toolbar");
+    const copy = el("button", "btn primary", "Copy link"); copy.type = "button";
+    copy.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(url); toast("Link copied"); }
+      catch { const r = document.createRange(); r.selectNodeContents(lb); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Link selected: copy it"); }
+    });
+    row.append(copy);
+    const mail = el("button", "btn", "Email it to them"); mail.type = "button";
+    mail.addEventListener("click", async () => {
+      mail.disabled = true;
+      try {
+        const { data } = await sb.auth.getSession();
+        const r = await fetch(SUPABASE_URL + "/functions/v1/pros-mail", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (data.session ? data.session.access_token : "") }, body: JSON.stringify({ action: "contractor_invite", link: url }) });
+        const res = await r.json(); toast(res.message || (res.ok ? "Emailed" : "Couldn't send it")); if (res.ok) mail.textContent = "Emailed"; else mail.disabled = false;
+      } catch { toast("Couldn't reach Sparrow. Try again."); mail.disabled = false; }
+    });
+    row.append(mail);
+    const digits = String(phoneNum || "").replace(/\D/g, "");
+    if (digits) {
+      const wa = el("a", "btn", "Send on WhatsApp");
+      wa.href = `https://wa.me/${digits}?text=${encodeURIComponent(`Hi${name ? " " + name.split(" ")[0] : ""}, here's your link to join Sparrow Pros: ${url}`)}`;
+      wa.target = "_blank"; wa.rel = "noopener";
+      row.append(wa);
+    }
+    box.append(row);
+    return box;
+  }
+
+  async function renderContractors(selected) {
+    if (selected) return renderContractor(selected);
+    const page = el("div", "page"); view.append(page);
+    const tb = el("div", "toolbar");
+    const inv = el("button", "btn primary", "Invite a contractor"); inv.type = "button";
+    tb.append(inv); page.append(tb);
+    const formHost = el("div"); page.append(formHost);
+    const list = el("div"); list.style.cssText = "display:flex;flex-direction:column;gap:10px"; page.append(list);
+
+    inv.addEventListener("click", async () => {
+      if (formHost.firstChild) { formHost.replaceChildren(); return; }
+      const { data: svcs } = await sb.from("services").select("code, name").eq("active", true).order("sort_order");
+      const f = el("form", "card");
+      const g = el("div", "grid-form");
+      const mk = (label, type, ph) => { const l = el("label", "field", label); const i = el("input"); i.type = type || "text"; if (ph) i.placeholder = ph; l.append(i); l.input = i; return l; };
+      const bn = mk("Business name"), cn = mk("Contact name"), em = mk("Email", "email"), ph = mk("Mobile (WhatsApp)", "tel", "604 555 0123");
+      g.append(bn, cn, em, ph);
+      const sv = el("div", "checks full");
+      (svcs || []).forEach((s) => { const l = el("label"); const i = el("input"); i.type = "checkbox"; i.value = s.code; l.append(i, s.name); sv.append(l); });
+      const svl = el("div", "field full"); svl.append("Services (they can change these)", sv); g.append(svl);
+      const err = el("div", "err"); const go = el("button", "btn primary", "Create invite"); go.type = "submit";
+      f.append(el("div", "title", "Invite a contractor"), g, go, err);
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.textContent = ""; go.disabled = true;
+        const p = { business_name: bn.input.value, contact_name: cn.input.value, email: em.input.value, phone: ph.input.value, services: [...sv.querySelectorAll("input:checked")].map((i) => i.value) };
+        const { data, error } = await sb.rpc("admin_invite_contractor", { p });
+        if (error) { err.textContent = errMsg(error); go.disabled = false; return; }
+        formHost.replaceChildren(linkCard(`Invite created for ${p.business_name}`, data.token, p.phone, p.contact_name));
+        toast("Invite created"); loadList();
+      });
+      formHost.replaceChildren(f);
+    });
+
+    const loadList = async () => {
+      list.replaceChildren(el("div", "sub", "Loading…"));
+      const { data, error } = await sb.from("contractors")
+        .select("id, business_name, in_house, contact_name, phone_e164, email, status, submitted_at, activated_at, insurance_expires_on, created_at, contractor_services(service_code), contractor_areas(city), contractor_documents(kind, status, expires_on)")
+        .order("created_at", { ascending: false });
+      if (error) return fail(list, error);
+      list.replaceChildren();
+      if (!data.length) { const e = el("div", "empty"); e.append(el("h3", null, "No contractors yet"), el("p", null, "Invite your first contractor. They'll get a link to set up their account on their phone.")); return list.append(e); }
+      const order = { submitted: 0, applied: 0, setting_up: 1, invited: 2, active: 3, paused: 4, suspended: 4, left: 5 };
+      data.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+      for (const c of data) {
+        const card = el("div", "card"); card.style.cursor = "pointer";
+        card.addEventListener("click", () => { location.hash = "contractors-" + c.id; });
+        const top = el("div", "row"); const g = el("div", "grow");
+        g.append(el("div", "title", c.business_name), el("div", "sub", [c.contact_name, phone(c.phone_e164), c.email].filter(Boolean).join(" · ")));
+        const pills = el("div", "row"); pills.style.gap = "6px"; if (c.in_house) pills.append(el("span", "pill", "In-house")); pills.append(cpill(c.status));
+        top.append(g, pills); card.append(top);
+        const live = (c.contractor_documents || []).filter((d) => d.status !== "replaced");
+        const pending = live.filter((d) => d.status === "pending").length;
+        const soon = live.filter((d) => d.expires_on && daysLeft(d.expires_on) <= 30).length;
+        const info = [`${(c.contractor_services || []).length} services`, `${(c.contractor_areas || []).length} cities`, `${live.length}/4 documents`];
+        if (pending) info.push(`${pending} to review`);
+        if (soon) info.push(`${soon} expiring within 30 days`);
+        if (c.submitted_at && c.status === "submitted") info.push("submitted " + ago(c.submitted_at));
+        card.append(el("div", "sub", info.join(" · ")));
+        list.append(card);
+      }
+    };
+    loadList();
+  }
+
+  async function renderContractor(id) {
+    const page = el("div", "page"); view.append(page);
+    const back = el("button", "btn", "← Contractors"); back.type = "button"; back.style.alignSelf = "flex-start";
+    back.addEventListener("click", () => { location.hash = "contractors"; });
+    page.append(back);
+    const host = el("div"); host.style.cssText = "display:flex;flex-direction:column;gap:12px"; page.append(host);
+    host.append(el("div", "sub", "Loading…"));
+    const [c, docs, terms, svc, area, curTerms, cprices, ctpl, book, cjobs] = await Promise.all([
+      sb.from("contractors").select("*").eq("id", id).maybeSingle(),
+      sb.from("contractor_documents").select("*").eq("contractor_id", id).neq("status", "replaced").order("created_at", { ascending: false }),
+      sb.from("contractor_agreements").select("version, accepted_at").eq("contractor_id", id).order("accepted_at", { ascending: false }),
+      sb.from("contractor_services").select("service_code, services(name)").eq("contractor_id", id),
+      sb.from("contractor_areas").select("city").eq("contractor_id", id),
+      sb.from("agreement_versions").select("version").order("published_at", { ascending: false }).limit(1).maybeSingle(),
+      sb.from("contractor_prices").select("service_code, variant, price_cents").eq("contractor_id", id).eq("active", true),
+      sb.from("quote_templates").select("service_code, group_name, name, unit, unit_price_cents").eq("contractor_id", id).eq("active", true).order("sort"),
+      sb.from("price_book").select("service_code, variant, label, price_cents"),
+      sb.from("jobs").select("ref, status, price_cents, created_at, service:services(name)").eq("contractor_id", id).order("created_at", { ascending: false }).limit(20),
+    ]);
+    const e0 = c.error || docs.error || terms.error || svc.error || area.error;
+    if (e0) return fail(host, e0);
+    if (!c.data) { host.replaceChildren(el("div", "empty", "Contractor not found.")); return; }
+    const k = c.data; host.replaceChildren();
+
+    const head = el("div", "card");
+    const top = el("div", "row"); const g = el("div", "grow");
+    g.append(el("h2", null, k.business_name), el("div", "sub", [k.legal_name, k.contact_name].filter(Boolean).join(" · ")));
+    g.firstChild.style.cssText = "font:700 1.75rem/1.1 var(--display);letter-spacing:-.02em;margin:0";
+    top.append(g, cpill(k.status)); head.append(top);
+    if (k.status_reason) head.append(el("div", "sub", "Reason: " + k.status_reason));
+    const dl = el("dl", "kv");
+    const fact = (a, b) => { if (b == null || b === "") return; dl.append(el("dt", null, a), el("dd", null, String(b))); };
+    fact("Phone", phone(k.phone_e164)); fact("Email", k.email); fact("Address", [k.address_line, k.city, k.postal_code].filter(Boolean).join(", "));
+    fact("Business number", k.business_number); fact("GST number", k.gst_number); fact("WorkSafeBC", k.worksafebc_number);
+    fact("Crew", k.crew_size); fact("Years in business", k.years_in_business);
+    fact("Services", (svc.data || []).map((s) => (s.services && s.services.name) || s.service_code).join(", ") || "None yet");
+    fact("Cities", (area.data || []).map((a) => a.city).join(", ") || "None yet");
+    fact("Working days", (k.working_days || []).map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join(", "));
+    fact("Site visits", k.visit_hours ? `${k.visit_hours.start}–${k.visit_hours.end}` : "");
+    fact("Payout email", k.payout_interac_email);
+    fact("On invoices", [k.invoice_display_name, k.invoice_prefix && "numbers " + k.invoice_prefix + "…", k.brand_color].filter(Boolean).join(" · "));
+    const accepted = (terms.data || [])[0];
+    fact("Terms", accepted ? `Accepted ${accepted.version} on ${fShort.format(new Date(accepted.accepted_at))}${curTerms.data && curTerms.data.version !== accepted.version ? " (not the latest)" : ""}` : "Not accepted yet");
+    fact("Invited", k.invited_at ? fShort.format(new Date(k.invited_at)) : ""); fact("Submitted", k.submitted_at ? fShort.format(new Date(k.submitted_at)) : ""); fact("Active since", k.activated_at ? fShort.format(new Date(k.activated_at)) : "");
+    head.append(dl);
+    host.append(head);
+
+    // prices and jobs
+    const pc = el("div", "card"); pc.append(el("div", "title", "Their prices"));
+    const svcName = (code) => { const x = (svc.data || []).find((s) => s.service_code === code); return (x && x.services && x.services.name) || code; };
+    const plist = (cprices.data || []);
+    if (!plist.length) pc.append(el("div", "sub", "No set prices. Every job for them goes to a quote."));
+    plist.forEach((r) => {
+      const b = (book.data || []).find((x) => x.service_code === r.service_code && x.variant === r.variant);
+      const row = el("div", "row"); row.append(el("div", "grow", svcName(r.service_code) + (b && b.label ? " · " + b.label : "")), el("span", "price", money(r.price_cents)));
+      if (b && b.price_cents != null && b.price_cents !== r.price_cents) row.append(el("span", "sub", "Sparrow " + money(b.price_cents)));
+      pc.append(row);
+    });
+    if ((ctpl.data || []).length) {
+      pc.append(el("div", "title", "Quote line items"));
+      ctpl.data.forEach((t) => pc.append(el("div", "sub", `${t.name}: ${money(t.unit_price_cents)} / ${t.unit}${t.service_code ? " · " + svcName(t.service_code) : ""}`)));
+    }
+    host.append(pc);
+    const jc = el("div", "card"); jc.append(el("div", "title", "Jobs"));
+    if (!(cjobs.data || []).length) jc.append(el("div", "sub", "No jobs yet."));
+    (cjobs.data || []).forEach((j) => { const row = el("div", "row"); row.append(el("span", "mono", j.ref), el("div", "grow", (j.service && j.service.name) || ""), pill(j.status)); if (j.price_cents != null) row.append(el("span", "price", money(j.price_cents))); jc.append(row); });
+    host.append(jc);
+
+    // documents
+    const dc = el("div", "card"); dc.append(el("div", "title", "Documents"));
+    const dlist = el("div", "doclist");
+    const byKind = {}; (docs.data || []).forEach((d) => { if (!byKind[d.kind]) byKind[d.kind] = d; });
+    ["insurance", "worksafebc", "licence", "photo_id"].forEach((kind) => {
+      const d = byKind[kind]; const row = el("div", "docrow");
+      const r1 = el("div", "row"); const t = el("div", "grow"); t.append(el("div", "title", DOC_NAMES[kind]));
+      const st = !d ? el("span", "pill", "Missing") : d.status === "accepted" ? el("span", "pill good", "Accepted") : d.status === "rejected" ? el("span", "pill crit", "Rejected") : el("span", "pill info", "To review");
+      r1.append(t, st); row.append(r1);
+      if (d) {
+        const dleft = daysLeft(d.expires_on);
+        const bits = [d.file_name, d.number && "No. " + d.number, d.coverage_cents && "Coverage $" + (d.coverage_cents / 100).toLocaleString("en-CA"), d.expires_on && `Expires ${d.expires_on}${dleft != null && dleft <= 30 ? ` (${dleft} days)` : ""}`, "uploaded " + ago(d.created_at)].filter(Boolean);
+        row.append(el("div", "sub", bits.join(" · ")));
+        if (d.review_note) row.append(el("div", "sub", "Your note: " + d.review_note));
+        const acts = el("div", "toolbar");
+        const view = el("button", "btn", "Open file"); view.type = "button";
+        view.addEventListener("click", async () => {
+          const w = window.open("", "_blank");
+          const { data, error } = await sb.storage.from("contractor-docs").createSignedUrl(d.file_path, 300);
+          if (error || !data) { if (w) w.close(); return toast("Couldn't open the file: " + errMsg(error)); }
+          if (w) w.location = data.signedUrl; else location.href = data.signedUrl;
+        });
+        acts.append(view);
+        if (d.status !== "accepted") {
+          const ok = el("button", "btn primary", "Accept"); ok.type = "button";
+          ok.addEventListener("click", async () => { ok.disabled = true; const { error } = await sb.rpc("admin_review_document", { p_document: d.id, p_accept: true, p_note: null }); if (error) { ok.disabled = false; return toast(errMsg(error)); } toast("Accepted"); render(); });
+          acts.append(ok);
+        }
+        if (d.status !== "rejected") {
+          const no = el("button", "btn danger", "Ask for a new upload"); no.type = "button";
+          no.addEventListener("click", () => {
+            const f = el("div", "toolbar"); const i = el("input", "search grow"); i.placeholder = "What's wrong? The contractor sees this."; const s = el("button", "btn danger", "Send"); s.type = "button";
+            s.addEventListener("click", async () => { const { error } = await sb.rpc("admin_review_document", { p_document: d.id, p_accept: false, p_note: i.value }); if (error) return toast(errMsg(error)); toast("Sent back to the contractor"); render(); });
+            f.append(i, s); row.append(f); no.disabled = true; i.focus();
+          });
+          acts.append(no);
+        }
+        row.append(acts);
+      }
+      dlist.append(row);
+    });
+    dc.append(dlist);
+    if (k.worksafebc_number) dc.append(el("div", "sub", "Check WorkSafeBC clearance for account " + k.worksafebc_number + " on worksafebc.com before activating, and monthly after."));
+    host.append(dc);
+
+    // status actions
+    const sc = el("div", "card"); sc.append(el("div", "title", "Status"));
+    const allAccepted = ["insurance", "worksafebc", "licence", "photo_id"].every((kd) => byKind[kd] && byKind[kd].status === "accepted");
+    const sacts = el("div", "toolbar");
+    const setStatus = async (status, reason) => { const { error } = await sb.rpc("admin_set_contractor_status", { p_contractor: id, p_status: status, p_reason: reason || null }); if (error) return toast(errMsg(error)); toast("Status saved"); refreshBadges(); render(); };
+    if (k.status !== "active") {
+      const a = el("button", "btn primary", "Activate: start Sparrow jobs"); a.type = "button";
+      a.disabled = !k.in_house && (!allAccepted || !accepted);
+      a.addEventListener("click", () => setStatus("active"));
+      sacts.append(a);
+    }
+    const reasonIn = el("input", "search grow"); reasonIn.placeholder = "Reason (the contractor sees this)";
+    if (k.status === "active") { const p = el("button", "btn danger", "Pause Sparrow jobs"); p.type = "button"; p.addEventListener("click", () => { if (!reasonIn.value.trim()) return toast("Add a reason first"); setStatus("paused", reasonIn.value); }); sacts.append(reasonIn, p); }
+    if (k.status !== "left") { const r = el("button", "btn danger", "Remove"); r.type = "button"; r.addEventListener("click", () => { if (r.dataset.armed !== "1") { r.dataset.armed = "1"; r.textContent = "Click again to remove"; return; } setStatus("left", reasonIn.value); }); sacts.append(r); }
+    sc.append(sacts);
+    if (k.status !== "active" && !k.in_house && (!allAccepted || !accepted)) sc.append(el("div", "sub", "Activate needs all four documents accepted and the terms accepted. In-house contractors can be activated without them."));
+    const ih = el("label", "inhouse"); const ihc = el("input"); ihc.type = "checkbox"; ihc.checked = !!k.in_house;
+    const iht = el("div"); iht.append(el("div", "title", "In-house contractor"), el("div", "sub", "Part of Sparrow's own team. Bookings never go to them automatically; you assign their jobs from Jobs. They can be activated without uploading documents."));
+    ih.append(ihc, iht);
+    ihc.addEventListener("change", async () => {
+      ihc.disabled = true;
+      const { error } = await sb.rpc("admin_set_contractor_in_house", { p_contractor: id, p_in_house: ihc.checked });
+      if (error) { ihc.checked = !ihc.checked; ihc.disabled = false; return toast(errMsg(error)); }
+      toast(ihc.checked ? "Marked as in-house" : "No longer in-house"); render();
+    });
+    sc.append(ih);
+    host.append(sc);
+
+    // links
+    const lc = el("div", "card"); lc.append(el("div", "title", "Sign-in link"));
+    lc.append(el("div", "sub", k.user_id ? "They have an account. Make a password reset link if they forgot it." : "They haven't created their account yet. Make a new invite link if the old one expired."));
+    const lk = el("button", "btn", k.user_id ? "Make password reset link" : "Make new invite link"); lk.type = "button";
+    const lhost = el("div");
+    lk.addEventListener("click", async () => {
+      const { data, error } = await sb.rpc("admin_contractor_link", { p_contractor: id, p_kind: k.user_id ? "reset" : "invite" });
+      if (error) return toast(errMsg(error));
+      lhost.replaceChildren(linkCard(k.user_id ? "Password reset link" : "New invite link", data.token, k.phone_e164, k.contact_name));
+    });
+    lc.append(lk, lhost); host.append(lc);
+
+    // activity
+    const ac = el("div", "card"); ac.append(el("div", "title", "Activity"));
+    const { data: log } = await sb.from("audit_log").select("actor, action, created_at, table_name, row_id").or(`row_id.eq.${id},and(table_name.eq.contractor_documents,actor.eq.contractor)`).order("created_at", { ascending: false }).limit(30);
+    const docIds = new Set((docs.data || []).map((d) => d.id));
+    const rows = (log || []).filter((x) => x.row_id === id || docIds.has(x.row_id));
+    if (!rows.length) ac.append(el("div", "sub", "Nothing yet."));
+    rows.forEach((x) => ac.append(el("div", "sub", `${fWhen(x.created_at)} · ${x.actor} · ${x.action.replace(/^(admin|contractor)\./, "").replace(/_/g, " ")}`)));
+    host.append(ac);
+  }
+
+  // ---------- insights ----------
+  let insDays = 90;
+  async function renderInsights() {
+    const page = el("div", "page"); view.append(page);
+    const tb = el("div", "toolbar");
+    [[30, "30 days"], [90, "90 days"], [365, "12 months"], [0, "All time"]].forEach(([d, t]) => {
+      const c = el("button", "chip", t); c.type = "button"; c.setAttribute("aria-pressed", String(insDays === d));
+      c.addEventListener("click", () => { insDays = d; render(); }); tb.append(c);
+    });
+    page.append(el("div", "sub", "Requests Sparrow couldn't serve, and where bookings come from. Use it to decide which service or city to add next, and where to find contractors."), tb);
+    const host = el("div"); host.style.cssText = "display:flex;flex-direction:column;gap:14px"; page.append(host);
+    host.append(el("div", "sub", "Loading…"));
+    const since = insDays ? new Date(Date.now() - insDays * 86400000).toISOString() : "2000-01-01T00:00:00Z";
+    const [dq, jq, sq] = await Promise.all([
+      sb.from("demand_requests").select("kind, service_code, service_text, city, wants_update, customer_id, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+      sb.from("jobs").select("status, created_at, customer_id, service:services(name), property:properties(city)").gte("created_at", since).limit(5000),
+      sb.from("services").select("code, name"),
+    ]);
+    const e0 = dq.error || jq.error || sq.error; if (e0) return fail(host, e0);
+    host.replaceChildren();
+    const svcName = Object.fromEntries((sq.data || []).map((s) => [s.code, s.name]));
+    const d = dq.data || [], jobs = (jq.data || []).filter((j) => j.status !== "cancelled");
+    const tidy = (s) => String(s || "").trim().toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
+    const title = (s) => s.replace(/\b\w/g, (m) => m.toUpperCase());
+
+    const tiles = el("div", "tiles");
+    const tile = (n, t) => { const x = el("div", "tile"); x.append(el("b", null, String(n)), el("span", null, t)); tiles.append(x); };
+    tile(d.length, "requests Sparrow couldn't serve");
+    tile(new Set(d.map((r) => r.customer_id).filter(Boolean)).size, "different customers asking");
+    tile(d.filter((r) => r.wants_update).length, "want a message when it's available");
+    tile(jobs.length, "bookings in the area");
+    host.append(tiles);
+
+    const table = (head, rows, empty) => {
+      const card = el("div", "card"); card.append(el("div", "title", head));
+      if (!rows.length) { card.append(el("div", "sub", empty)); return card; }
+      const max = Math.max(...rows.map((r) => r.count));
+      const w = el("div", "tablewrap"); const t = el("table", "ins");
+      const th = el("tr"); ["", "Requests", "", "Customers", "Want update", "Also mentioned", "Last asked"].forEach((h) => th.append(el("th", null, h)));
+      const thead = el("thead"); thead.append(th); t.append(thead);
+      const tbd = el("tbody");
+      rows.forEach((r) => {
+        const tr = el("tr");
+        const name = el("td"); name.append(el("strong", null, r.name)); tr.append(name);
+        tr.append(el("td", "num", String(r.count)));
+        const bc = el("td", "barcell"); const b = el("div", "meter"); b.style.width = Math.max(4, r.count / max * 100) + "%"; bc.append(b); tr.append(bc);
+        tr.append(el("td", "num", String(r.people)), el("td", "num", String(r.wants)), el("td", null, r.also || "–"), el("td", "num", ago(r.last)));
+        tbd.append(tr);
+      });
+      t.append(tbd); w.append(t); card.append(w); return card;
+    };
+    const group = (list, keyOf, alsoOf) => {
+      const m = new Map();
+      list.forEach((r) => {
+        const k = keyOf(r); if (!k) return;
+        const g = m.get(k) || { name: k, count: 0, people: new Set(), wants: 0, also: new Map(), last: r.created_at };
+        g.count++; if (r.customer_id) g.people.add(r.customer_id); if (r.wants_update) g.wants++;
+        const a = alsoOf(r); if (a) g.also.set(a, (g.also.get(a) || 0) + 1);
+        if (r.created_at > g.last) g.last = r.created_at;
+        m.set(k, g);
+      });
+      return [...m.values()].map((g) => ({ ...g, people: g.people.size, also: [...g.also.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n, c]) => `${n} (${c})`).join(", ") }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    host.append(table("Services people asked for that Sparrow doesn't offer",
+      group(d.filter((r) => r.kind === "service"), (r) => title(tidy(r.service_text || r.service_code)), (r) => r.city && title(tidy(r.city))),
+      "None yet. When a customer asks Preet for something Sparrow doesn't do, it shows here."));
+    host.append(table("Cities outside the service area",
+      group(d.filter((r) => r.kind === "city" && r.city), (r) => title(tidy(r.city)), (r) => r.service_code ? svcName[r.service_code] || r.service_code : r.service_text && title(tidy(r.service_text))),
+      "None yet. When someone outside your cities asks, their city shows here."));
+    host.append(table("Bookings with no contractor available",
+      group(d.filter((r) => r.kind === "no_contractor"), (r) => `${svcName[r.service_code] || r.service_code || "Service"} in ${title(tidy(r.city || "unknown"))}`, () => null),
+      "None yet. Once jobs are matched to contractors automatically, any booking with nobody to take it shows here: that's where to recruit."));
+
+    // bookings by city × service
+    const byCity = new Map();
+    jobs.forEach((j) => {
+      const city = (j.property && j.property.city) || "Unknown"; const s = (j.service && j.service.name) || "Other";
+      const g = byCity.get(city) || { name: city, count: 0, people: new Set(), wants: 0, also: new Map(), last: j.created_at };
+      g.count++; if (j.customer_id) g.people.add(j.customer_id); g.also.set(s, (g.also.get(s) || 0) + 1); if (j.created_at > g.last) g.last = j.created_at;
+      byCity.set(city, g);
+    });
+    const cityRows = [...byCity.values()].map((g) => ({ ...g, people: g.people.size, wants: "–", also: [...g.also.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} (${c})`).join(", ") })).sort((a, b) => b.count - a.count);
+    const bc = table("Bookings by city", cityRows, "No bookings in this period.");
+    bc.querySelectorAll("th").forEach((th, i) => { if (i === 1) th.textContent = "Bookings"; if (i === 4) th.textContent = ""; if (i === 5) th.textContent = "Services"; if (i === 6) th.textContent = "Last booking"; });
+    host.append(bc);
+  }
+
+  // ---------- settings ----------
+  async function renderSettings() {
+    const page = el("div", "page"); page.style.maxWidth = "720px"; view.append(page);
+    const { data, error } = await sb.from("settings").select("key, value");
+    if (error) return fail(page, error);
+    const s = Object.fromEntries(data.map((r) => [r.key, r.value]));
+    const f = el("form", "card");
+    f.append(el("div", "title", "Platform rules"), el("div", "sub", "Changes apply to new quotes, bookings and contractors from now on. Every change is logged."));
+    const g = el("div", "grid-form");
+    const num = (label, key, toUi, fromUi, step) => {
+      const l = el("label", "field", label); const i = el("input"); i.type = "number"; i.step = step || "any"; i.value = s[key] == null ? "" : toUi(Number(s[key])); l.append(i);
+      l.read = () => [key, fromUi(Number(i.value))]; l.input = i; g.append(l); return l;
+    };
+    const pct = (v) => +(v * 100).toFixed(2), unpct = (v) => +(v / 100).toFixed(4), dollars = (v) => v / 100, cents = (v) => Math.round(v * 100), same = (v) => v;
+    const fields = [
+      num("Sparrow commission (%)", "commission_rate", pct, unpct),
+      num("Deposit needed when quote is over ($, before GST)", "deposit_threshold_cents", dollars, cents, "1"),
+      num("Deposit for new customers (%)", "deposit_rate_new", pct, unpct),
+      num("Deposit for returning customers (%)", "deposit_rate_returning", pct, unpct),
+      num("Quotes valid for (days)", "quote_valid_days", same, Math.round, "1"),
+      num("Late-cancel cutoff (hours before)", "cancel_cutoff_hours", same, Math.round, "1"),
+      num("Late-cancel fee ($)", "cancel_fee_cents", dollars, cents, "1"),
+      num("Contractor owing limit ($)", "owing_limit_cents", dollars, cents, "1"),
+      num("Contractor owing limit (days)", "owing_limit_days", same, Math.round, "1"),
+      num("Minimum liability insurance ($)", "min_insurance_cents", dollars, cents, "1"),
+      num("GST (%)", "gst_rate", pct, unpct),
+      num("Invite links valid for (days)", "invite_valid_days", same, Math.round, "1"),
+    ];
+    const cities = el("label", "field full", "Service cities (one per line)"); const ta = el("textarea"); ta.rows = 6; ta.value = (s.service_cities || []).join("\n"); cities.append(ta); g.append(cities);
+    const tpl = el("label", "field full"); const cb = el("input"); cb.type = "checkbox"; cb.checked = s.whatsapp_templates_enabled === true; tpl.style.flexDirection = "row"; tpl.style.alignItems = "center"; tpl.style.gap = "8px"; tpl.append(cb, "Send WhatsApp template messages automatically"); g.append(tpl);
+    const err = el("div", "err"); const save = el("button", "btn primary", "Save rules"); save.type = "submit";
+    f.append(g, save, err); page.append(f);
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = "";
+      const p = {};
+      for (const fl of fields) { if (fl.input.value === "") continue; const [k, v] = fl.read(); if (!isFinite(v) || v < 0) return (err.textContent = "Check the numbers: they can't be negative."); p[k] = v; }
+      if (p.deposit_rate_new > 1 || p.deposit_rate_returning > 1 || p.commission_rate > 1) return (err.textContent = "Percentages must be 100 or less.");
+      p.service_cities = ta.value.split("\n").map((x) => x.trim()).filter(Boolean);
+      p.whatsapp_templates_enabled = cb.checked;
+      save.disabled = true;
+      const { error: e2 } = await sb.rpc("admin_save_settings", { p });
+      save.disabled = false;
+      if (e2) return (err.textContent = errMsg(e2));
+      toast("Rules saved");
+    });
+  }
+
+  // ---------- account ----------
+  function renderAccount() {
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", "false"));
+    const page = el("div", "page"); page.style.maxWidth = "460px"; view.append(page);
+    const card = el("form", "card");
+    card.append(el("div", "title", "Change password"));
+    const f1 = el("label", "field", "New password (at least 10 characters)"); const p1 = el("input"); p1.type = "password"; p1.autocomplete = "new-password"; f1.append(p1);
+    const f2 = el("label", "field", "Type it again"); const p2 = el("input"); p2.type = "password"; p2.autocomplete = "new-password"; f2.append(p2);
+    const err = el("div", "err"); const save = el("button", "btn primary", "Save new password"); save.type = "submit";
+    card.append(f1, f2, save, err);
+    card.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = "";
+      if (p1.value.length < 10) return (err.textContent = "Use at least 10 characters.");
+      if (p1.value !== p2.value) return (err.textContent = "The two passwords don't match.");
+      save.disabled = true;
+      const { error } = await sb.auth.updateUser({ password: p1.value });
+      save.disabled = false;
+      if (error) return (err.textContent = error.message);
+      p1.value = p2.value = ""; toast("Password changed");
+    });
+    const out = el("div", "card"); const so = el("button", "btn danger", "Sign out"); so.type = "button";
+    so.addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); });
+    out.append(el("div", "title", "Session"), el("div", "sub", "Signed in as " + ($("whoEmail").textContent || "")), so);
+    page.append(card, out);
+  }
+
+  // ---------- auth ----------
+  async function start(session) {
+    const { data: me, error } = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
+    if (error || !me) {
+      await sb.auth.signOut();
+      $("app").hidden = true; $("login").hidden = false;
+      $("loginErr").textContent = "This account isn't a Sparrow admin.";
+      return;
+    }
+    $("whoEmail").textContent = session.user.email;
+    $("login").hidden = true; $("app").hidden = false;
+    render(); refreshBadges();
+    setInterval(refreshBadges, 60000);
+  }
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault(); $("loginErr").textContent = ""; $("loginBtn").disabled = true;
+    const { data, error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+    $("loginBtn").disabled = false;
+    if (error) { $("loginErr").textContent = error.message === "Invalid login credentials" ? "Wrong email or password." : error.message; return; }
+    start(data.session);
+  });
+  sb.auth.getSession().then(({ data }) => { if (data.session) start(data.session); else $("login").hidden = false; });
+})();
+</script>
+</body>
+</html>

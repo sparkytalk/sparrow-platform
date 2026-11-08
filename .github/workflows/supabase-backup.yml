@@ -1,0 +1,39 @@
+name: Supabase backup
+
+on:
+  schedule:
+    - cron: "17 10 * * *"   # every day, ~3am Vancouver
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: cskcmpayxaqyqlqhepup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Download edge functions
+        run: |
+          supabase functions list --project-ref "$PROJECT_REF" -o json > /tmp/fns.json
+          for f in $(jq -r '.[].slug' /tmp/fns.json); do
+            supabase functions download "$f" --project-ref "$PROJECT_REF" --use-api || echo "could not download $f"
+          done
+      - name: Dump database schema (no customer data)
+        run: |
+          mkdir -p supabase/schema
+          supabase db dump --db-url "postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-ca-central-1.pooler.supabase.com:5432/postgres" -f supabase/schema/schema.sql
+      - name: Commit changes
+        run: |
+          git config user.name "sparrow-backup"
+          git config user.email "no-reply@sparrowlabs.ca"
+          git add supabase
+          git diff --cached --quiet || git commit -m "Nightly Supabase backup"
+          git push
