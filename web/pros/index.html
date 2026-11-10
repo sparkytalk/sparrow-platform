@@ -152,6 +152,19 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
 .crewline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .picklist { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 16px; }
 .phone .tabbar.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.phone .tabbar.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.phone .tabbar.four a span { display: none !important; }
+.has-dot { position: relative; }
+.has-dot::after { content: ""; position: absolute; top: 9px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px var(--bg); }
+.side a.has-dot::after { top: 50%; right: 14px; transform: translateY(-50%); }
+.bubble .btag { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .7; margin-bottom: 2px; }
+.bubble .btime { display: block; font-size: 11px; opacity: .6; margin-top: 4px; }
+.bubble.note { align-self: center; background: var(--tint); font-size: 13px; color: #9a3412; border-radius: 999px; padding: 6px 12px; }
+.chat .seen { align-self: flex-end; font-size: 12px; color: var(--muted); margin-top: -4px; }
+.chat.wide { max-width: 760px; padding-bottom: 8px; }
+.chat.wide .bubble { max-width: 75%; }
+.composer.inline { position: sticky; left: auto; transform: none; width: 100%; max-width: 760px; bottom: 16px; margin-top: 14px; }
+@media (width<=760px) { .composer.inline { bottom: calc(96px + env(safe-area-inset-bottom)); } }
 .chat { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-bottom: 76px; }
 .bubble { max-width: 85%; padding: 10px 14px; border-radius: 20px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bubble.agent { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 6px; }
@@ -271,6 +284,8 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     stop: '<rect width="14" height="14" x="5" y="5" rx="2"/>', timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
     package: '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
+    send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+    chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
     bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
   };
   function icon(name, size = 20, stroke = 1.75) {
@@ -290,17 +305,18 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
 
   const OWNER_NAV = [
     { h: "", label: "Home", icon: "house" }, { h: "jobs", label: "Jobs", icon: "briefcase" }, { h: "schedule", label: "Schedule", icon: "calendar" },
-    { h: "updates", label: "Updates", icon: "bell" }, { h: "team", label: "Crew", icon: "users" }, { h: "timesheets", label: "Timesheets", icon: "timer" },
+    { h: "messages", label: "Messages", icon: "chat" }, { h: "assistant", label: "Assistant", icon: "sparkles" }, { h: "updates", label: "Updates", icon: "bell" }, { h: "team", label: "Crew", icon: "users" }, { h: "timesheets", label: "Timesheets", icon: "timer" },
     { h: "calendar", label: "Availability", icon: "clock" }, { h: "inventory", label: "Inventory", icon: "package" }, { h: "prices", label: "Prices", icon: "list" }, { h: "account", label: "Account", icon: "settings" },
   ];
-  const navKey = () => { const c = location.hash.slice(1); if (c.startsWith("quote-") || c.startsWith("job-")) return "jobs"; if (c.startsWith("s-")) return "account"; return c; };
+  const navKey = () => { const c = location.hash.slice(1); if (c.startsWith("quote-") || c.startsWith("job-")) return "jobs"; if (c.startsWith("s-")) return "account"; if (c.startsWith("messages-")) return "messages"; return c; };
+  let ownerUnreadN = 0;
   function shell(content) {
     root.replaceChildren();
     const cur = navKey();
     const frame = el("div", "shell");
     const side = el("nav", "side"); side.setAttribute("aria-label", "Main");
     side.append(wordmark((me && me.contractor && (me.contractor.business_name)) || "Pros"));
-    const link = (n, size) => { const a = el("a", cur === n.h ? "active" : ""); a.href = "#" + n.h; a.append(icon(n.icon, size)); return a; };
+    const link = (n, size) => { const a = el("a", (cur === n.h ? "active" : "") + (n.h === "messages" && ownerUnreadN > 0 ? " has-dot" : "")); a.href = "#" + n.h; a.dataset.nav = n.h; a.append(icon(n.icon, size)); return a; };
     OWNER_NAV.forEach((n) => { const a = link(n, 19); a.append(n.label); side.append(a); });
     const bottom = el("div", "bottom");
     bottom.append(el("div", "note", (me && me.contractor && me.contractor.contact_name) || ""));
@@ -314,7 +330,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     more.addEventListener("click", () => {
       const back = el("div", "sheet-back"); const sheet = el("div", "sheet"); sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", "More");
       sheet.append(el("div", "grab"));
-      OWNER_NAV.slice(4).forEach((n) => { const a = el("a"); a.href = "#" + n.h; a.append(icon(n.icon, 21), n.label); a.addEventListener("click", () => back.remove()); sheet.append(a); });
+      OWNER_NAV.slice(4).forEach((n) => { const a = el("a"); a.href = "#" + n.h; a.dataset.nav = n.h; a.append(icon(n.icon, 21), n.label); a.addEventListener("click", () => back.remove()); sheet.append(a); });
       const s = el("button", "item"); s.type = "button"; s.append(icon("logOut", 21), "Sign out"); s.addEventListener("click", () => { back.remove(); signOut(); }); sheet.append(s);
       back.addEventListener("mousedown", (e) => { if (e.target === back) back.remove(); });
       back.append(sheet); document.body.append(back);
@@ -505,9 +521,13 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (h === "timesheets") return renderTimesheets();
     if (h === "updates") return renderUpdates();
     if (h === "inventory") return renderInventory();
+    if (h === "assistant") { renderOwnerAssistant(); refreshOwnerUnread(); return; }
+    if (h === "messages" || h.startsWith("messages-")) return renderMessages(h.slice(9));
+    refreshOwnerUnread();
+    if (h === "") return renderOwnerHome();
     renderOwnerHome();
   }
-  window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", () => { clearTimeout(pollT); route(); window.scrollTo(0, 0); });
 
   // ---------- account ----------
   function renderAccount() {
@@ -1564,8 +1584,8 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (!canGetJobs()) return shell(parts);
     shell([...parts, el("p", "mono", "Loading…")]);
     const today = todayISO(), week = addDays(today, 7);
-    let jobs, cal, team, upd;
-    try { [jobs, cal, team, upd] = await Promise.all([rpc("contractor_jobs"), rpc("contractor_calendar", { p_from: today, p_to: week }), rpc("team_list"), rpc("owner_updates")]); }
+    let jobs, cal, team, upd, inbox;
+    try { [jobs, cal, team, upd, inbox] = await Promise.all([rpc("contractor_jobs"), rpc("contractor_calendar", { p_from: today, p_to: week }), rpc("team_list"), rpc("owner_updates"), rpc("msg_inbox").catch(() => null)]); }
     catch (e) { return renderFatal(friendly(e)); }
     const open = jobs.filter((j) => ["booked", "offered", "assigned", "in_progress"].includes(j.status));
     const todays = open.filter((j) => localDayOf(j) === today || j.status === "in_progress");
@@ -1606,7 +1626,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     ];
     const openAlerts = upd.alerts.filter((a) => a.status !== "resolved"), pendingOff = upd.time_off.filter((r) => r.status === "pending"), newReports = upd.reports.filter((r) => !r.seen);
     const toUpdates = () => { location.hash = "updates"; };
+    const unreadThreads = inbox ? inbox.threads.filter((t) => t.unread > 0) : [];
     const needs = [
+      ...unreadThreads.map((t) => li({ icon: "chat", title: `Message from ${t.name}`, sub: t.last || "", right: el("span", "pill brand", `${t.unread} new`), tint: true, onClick: () => { location.hash = "messages-" + t.member_id; } })),
       ...openAlerts.map((a) => li({ icon: "alert", title: `${a.urgency === "high" ? "Urgent · " : ""}${ALERT_TYPES[a.type] || a.type} problem`, sub: `${a.member || "Crew"} · ${a.body}`, right: el("span", "pill " + (a.urgency === "high" ? "danger" : "warn"), a.status === "seen" ? "Seen" : "New"), onClick: toUpdates, tint: a.urgency === "high" })),
       ...pendingOff.map((r) => li({ icon: "calendar", title: `Time off · ${r.member}`, sub: r.start_date === r.end_date ? dayShort(r.start_date) : `${dayShort(r.start_date)} – ${dayShort(r.end_date)}`, right: el("span", "pill warn", "Answer"), onClick: toUpdates })),
       ...(newReports.length ? [li({ icon: "fileText", title: `${newReports.length} new daily report${newReports.length === 1 ? "" : "s"}`, sub: newReports.map((r) => r.job).filter(Boolean).slice(0, 2).join(", "), onClick: toUpdates })] : []),
@@ -1721,7 +1743,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (!crewMe) { try { crewMe = await rpc("crew_me"); } catch (e) { return renderFatal(friendly(e)); } }
     if (h.startsWith("cj-")) return renderCrewJob(h.slice(3));
     if (h === "cal") return renderCrewCalendar();
+    refreshCrewUnread();
     if (h === "ask") return renderCrewChat();
+    if (h === "msgs") return renderCrewMessages();
     renderCrewToday();
   }
   function crewShell(content, tab) {
@@ -1731,8 +1755,8 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const so = el("button", "round-btn"); so.type = "button"; so.setAttribute("aria-label", "Sign out"); so.title = "Sign out " + crewMe.member.full_name; so.append(icon("logOut", 19));
     so.addEventListener("click", () => { chatClose(); crewMe = null; crewData = null; signOut(); }); hd.append(so);
     const main = el("main"); main.append(...content);
-    const tb = el("nav", "tabbar"); tb.setAttribute("aria-label", "Main");
-    [["", "Today", "house"], ["ask", "Assistant", "sparkles"], ["cal", "Calendar", "calendar"]].forEach(([hh, label, ic]) => { const a = el("a", tab === hh ? "active" : ""); a.href = "#" + hh; a.append(icon(ic, 21), el("span", null, label)); tb.append(a); });
+    const tb = el("nav", "tabbar four"); tb.setAttribute("aria-label", "Main");
+    [["", "Today", "house"], ["msgs", "Messages", "chat"], ["ask", "Assistant", "sparkles"], ["cal", "Calendar", "calendar"]].forEach(([hh, label, ic]) => { const a = el("a", (tab === hh ? "active" : "") + (hh === "msgs" && crewUnread > 0 && tab !== "msgs" ? " has-dot" : "")); a.href = "#" + hh; a.dataset.nav = hh; a.setAttribute("aria-label", label); a.append(icon(ic, 21), el("span", null, label)); tb.append(a); });
     ph.append(hd, main, tb); root.append(ph);
   }
   const crewWhen = (j) => j.scheduled_start ? hm(j.scheduled_start) + (j.scheduled_end ? " – " + hm(j.scheduled_end) : "") : (TIME_WORDS[j.preferred_time] || "Time to confirm");
@@ -1967,45 +1991,87 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     });
   }
 
-  // ---------- crew assistant (text chat with the ElevenLabs agent) ----------
-  const chat = { ws: null, state: "idle", log: [], token: null, conv: null, waiting: false, err: "" };
-  function chatClose() { try { chat.ws && chat.ws.close(); } catch { /* already closed */ } chat.ws = null; chat.state = "idle"; chat.log = []; chat.token = null; chat.conv = null; chat.waiting = false; }
-  function chatLogLine(role, body) {
-    if (!chat.token || !chat.conv || !body) return;
-    rpc("assistant_log", { p_token: chat.token, p_conversation: chat.conv, p_role: role, p_body: body }).catch(() => { /* memory is best effort */ });
+  // ---------- Claude assistant (crew and owners) ----------
+  const ai = { conv: null, log: [], busy: false, loaded: false, draft: "", err: "", pos: null, kind: null };
+  let pollT = null;
+  function chatClose() { Object.assign(ai, { conv: null, log: [], busy: false, loaded: false, draft: "", err: "", pos: null, kind: null }); }
+  async function authedFetch(path, body) {
+    const { data: s } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + path, { method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (s.session ? s.session.access_token : "") }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Couldn't reach Sparrow. Try again.");
+    return j;
   }
-  async function chatConnect() {
-    if (chat.state === "connecting" || chat.state === "open") return;
-    chat.state = "connecting"; chat.err = ""; drawChat();
+  async function aiLoad(kind) {
+    if (ai.loaded && ai.kind === kind) return;
+    chatClose(); ai.kind = kind; ai.loaded = true;
     try {
-      const pos = await where();
-      const { data: s } = await sb.auth.getSession();
-      const r = await fetch(SUPABASE_URL + "/functions/v1/crew-assistant", { method: "POST",
-        headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (s.session ? s.session.access_token : "") },
-        body: JSON.stringify({ lat: pos.lat ?? null, lng: pos.lng ?? null }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.signed_url) throw new Error(j.error || "The assistant is not available right now.");
-      chat.token = j.session_token;
-      const ws = new WebSocket(j.signed_url); chat.ws = ws;
-      ws.onopen = () => ws.send(JSON.stringify({ type: "conversation_initiation_client_data", dynamic_variables: j.dynamic_variables, conversation_config_override: { conversation: { text_only: true } } }));
-      ws.onmessage = (ev) => {
-        let m; try { m = JSON.parse(ev.data); } catch { return; }
-        if (m.type === "ping") return ws.send(JSON.stringify({ type: "pong", event_id: m.ping_event.event_id }));
-        if (m.type === "conversation_initiation_metadata") { chat.conv = m.conversation_initiation_metadata_event.conversation_id; chat.state = "open"; drawChat(); return; }
-        if (m.type === "agent_response") {
-          const t = m.agent_response_event && m.agent_response_event.agent_response; if (!t) return;
-          chat.log.push({ role: "agent", body: t }); chat.waiting = false; chatLogLine("agent", t); drawChat(); return;
-        }
-      };
-      ws.onclose = () => { if (chat.ws !== ws) return; chat.ws = null; chat.state = "closed"; chat.waiting = false; drawChat(); };
-      ws.onerror = () => { chat.err = "Lost the connection."; };
-    } catch (e) { chat.state = "closed"; chat.err = friendly(e); drawChat(); }
+      const h = await rpc("ai_history");
+      if (h && h.conversation_id) { ai.conv = h.conversation_id; ai.log = (h.messages || []).map((m) => ({ role: m.role === "user" ? "user" : "agent", body: m.body })); }
+    } catch { /* start fresh */ }
   }
-  function chatSend(text) {
-    text = text.trim(); if (!text || !chat.ws || chat.state !== "open") return false;
-    chat.ws.send(JSON.stringify({ type: "user_message", text }));
-    chat.log.push({ role: "user", body: text }); chat.waiting = true; chatLogLine("user", text); drawChat(); return true;
+  async function aiSend(text, redraw, afterAction) {
+    text = (text || "").trim(); if (!text || ai.busy) return false;
+    ai.log.push({ role: "user", body: text }); ai.busy = true; ai.err = ""; ai.draft = ""; redraw();
+    try {
+      if (ai.kind === "crew" && !ai.pos) ai.pos = await where();
+      const j = await authedFetch("/functions/v1/ai-assistant", { message: text, conversation_id: ai.conv, lat: ai.pos && ai.pos.lat != null ? ai.pos.lat : null, lng: ai.pos && ai.pos.lng != null ? ai.pos.lng : null });
+      ai.conv = j.conversation_id; ai.log.push({ role: "agent", body: j.reply });
+      if ((j.actions || []).some((a) => a.ok) && afterAction) afterAction();
+    } catch (e) { ai.err = friendly(e); ai.log.pop(); ai.draft = text; }
+    ai.busy = false; redraw(); return true;
   }
+  function bubbles(list, items) {
+    items.forEach((m) => {
+      const b = el("div", "bubble " + m.role);
+      if (m.tag) b.append(el("span", "btag", m.tag));
+      b.append(document.createTextNode(m.body));
+      if (m.time) b.append(el("span", "btime", m.time));
+      list.append(b);
+    });
+  }
+  function composer(opts) {
+    const f = el("form", "composer" + (opts.inline ? " inline" : ""));
+    if (opts.camera) {
+      const cam = el("label", "round-btn"); cam.title = "Add photos to the job"; cam.setAttribute("aria-label", "Add photos to the job");
+      const fi = el("input"); fi.type = "file"; fi.accept = "image/*"; fi.multiple = true; fi.hidden = true; cam.append(fi, icon("camera", 19));
+      fi.addEventListener("change", () => { const files = [...fi.files]; fi.value = ""; if (files.length) opts.camera(files); });
+      f.append(cam);
+    }
+    const inp = el("textarea"); inp.rows = 1; inp.placeholder = opts.placeholder; inp.setAttribute("aria-label", opts.placeholder);
+    inp.disabled = !!opts.disabled; inp.value = opts.draft || "";
+    inp.addEventListener("input", () => { if (opts.onDraft) opts.onDraft(inp.value); inp.style.height = "auto"; inp.style.height = Math.min(inp.scrollHeight, 120) + "px"; });
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); f.requestSubmit(); } });
+    const go = el("button", "round-btn dark"); go.type = "submit"; go.setAttribute("aria-label", "Send"); go.append(icon("send", 19, 2)); go.disabled = !!opts.disabled;
+    f.append(inp, go);
+    f.addEventListener("submit", (e) => { e.preventDefault(); const v = inp.value.trim(); if (v) opts.onSend(v); });
+    return f;
+  }
+  function chatView(kind, redraw, afterAction) {
+    const crew = kind === "crew";
+    const head = el("div", "page-head"); const h = el(crew ? "h1" : "h2", crew ? "display" : null, "Assistant"); if (crew) h.style.cssText = "font-size:30px;margin:6px 0 2px";
+    head.append(h, el("p", "note", crew ? "Type what you need: clock in, send your report, flag a problem, ask about your shifts."
+      : "Ask for help with your crew and schedule: plan shifts, check who's working, answer time off, check hours, message the crew."));
+    const list = el("div", "chat" + (crew ? "" : " wide")); list.setAttribute("role", "log"); list.setAttribute("aria-live", "polite");
+    bubbles(list, ai.log);
+    if (ai.busy) { const t = el("div", "bubble agent typing"); t.append(el("i"), el("i"), el("i")); t.setAttribute("aria-label", "Assistant is typing"); list.append(t); }
+    const parts = [head, list];
+    if (ai.err) { const e = el("div", "chat-end"); e.append(el("span", "note", ai.err)); parts.push(e); }
+    if (!ai.log.length && !ai.busy) {
+      const sug = el("div", "chips"); sug.style.marginTop = "12px";
+      (crew ? ["I'm on site, clock me in", "What's my schedule this week?", "Did my boss see my problem report?"]
+        : ["Who's working today?", "Plan next week's shifts", "Anything I need to deal with?", "Message the whole crew"])
+        .forEach((t) => { const c = el("button", "chip", t); c.type = "button"; c.addEventListener("click", () => aiSend(t, redraw, afterAction)); sug.append(c); });
+      parts.push(sug);
+    }
+    if (!crew && ai.log.length) {
+      const nw = btn("New chat", "ghost small", () => { ai.conv = null; ai.log = []; ai.err = ""; redraw(); }); nw.style.cssText = "margin-top:10px;width:auto"; parts.push(nw);
+    }
+    parts.push(composer({ inline: !crew, placeholder: ai.busy ? "Thinking…" : "Message the assistant", disabled: ai.busy, draft: ai.draft,
+      onDraft: (v) => { ai.draft = v; }, onSend: (v) => aiSend(v, redraw, afterAction), camera: crew ? chatPhotos : null }));
+    return { parts, list };
+  }
+  function scrollChat() { requestAnimationFrame(() => { window.scrollTo(0, document.body.scrollHeight); const t = document.querySelector(".composer textarea"); if (t && !t.disabled && !matchMedia("(pointer:coarse)").matches) t.focus(); }); }
   async function chatPhotos(files) {
     const d = crewData; const jid = d && ((d.open_entry && d.open_entry.job_id) || (crewItems(d).find((x) => x.job && (x.now || x.day === todayISO())) || {}).job?.id);
     if (!jid) { toast("Clock in on a job first, or add photos from the job page."); return; }
@@ -2016,45 +2082,90 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
         const r = await rpc("crew_add_photo", { p_job: jid, p_kind: "other", p_path: path }); n++; label = r && r.job ? `${r.job.service} at ${r.job.address_line}` : label;
       } catch (e) { toast(friendly(e)); break; }
     }
-    if (n) { const msg = `[${n} photo${n === 1 ? "" : "s"} added to the job${label ? ": " + label : ""}]`; if (!chatSend(msg)) toast(`${n} photo${n === 1 ? "" : "s"} added to the job`); }
+    if (n) { ai.log.push({ role: "note", body: `${n} photo${n === 1 ? "" : "s"} added to the job${label ? ": " + label : ""}` }); drawCrewChat(); }
   }
   function renderCrewChat() {
     if (!crewData) { rpc("crew_home").then((d) => { crewData = d; }).catch(() => { /* photos only need it */ }); }
-    drawChat(true);
-    if (chat.state === "idle" || chat.state === "closed" && !chat.log.length) chatConnect();
+    if (!(ai.loaded && ai.kind === "crew")) crewShell([el("p", "mono", "Loading…")], "ask");
+    aiLoad("crew").then(drawCrewChat);
   }
-  function drawChat(force) {
-    if (!force && location.hash !== "#ask") return;
-    const head = el("div", "page-head"); const h = el("h1", null, "Assistant"); h.className = "display"; h.style.cssText = "font-size:30px;margin:6px 0 2px";
-    head.append(h, el("p", "note", "Type what you need: clock in, send your report, flag a problem, ask about your shifts."));
-    const list = el("div", "chat"); list.setAttribute("role", "log"); list.setAttribute("aria-live", "polite");
-    if (!chat.log.length && chat.state !== "open") list.append(el("p", "note", chat.state === "connecting" ? "Connecting…" : ""));
-    chat.log.forEach((m) => list.append(el("div", "bubble " + m.role, m.body)));
-    if (chat.waiting) { const t = el("div", "bubble agent typing"); t.append(el("i"), el("i"), el("i")); t.setAttribute("aria-label", "Assistant is typing"); list.append(t); }
-    if (chat.state === "closed") {
-      const b = el("div", "chat-end"); b.append(el("span", "note", chat.err || "Chat ended."));
-      b.append(btn("Start again", "small", () => { chatClose(); chatConnect(); })); list.append(b);
-    }
-    const parts = [head, list];
-    if (!chat.log.length && chat.state === "open") {
-      const sug = el("div", "chips"); sug.style.marginTop = "12px";
-      ["I'm on site, clock me in", "What's my schedule this week?", "Did my boss see my problem report?"].forEach((t) => { const c = el("button", "chip", t); c.type = "button"; c.addEventListener("click", () => chatSend(t)); sug.append(c); });
-      parts.push(sug);
-    }
-    const f = el("form", "composer"); const cam = el("label", "round-btn"); cam.title = "Add photos to the job"; cam.setAttribute("aria-label", "Add photos to the job");
-    const fi = el("input"); fi.type = "file"; fi.accept = "image/*"; fi.multiple = true; fi.hidden = true; cam.append(fi, icon("camera", 19));
-    fi.addEventListener("change", () => { const files = [...fi.files]; fi.value = ""; if (files.length) chatPhotos(files); });
-    const inp = el("textarea"); inp.rows = 1; inp.placeholder = chat.state === "open" ? "Message the assistant" : "Connecting…"; inp.setAttribute("aria-label", "Message");
-    inp.disabled = chat.state !== "open"; inp.value = chat.draft || ""; inp.addEventListener("input", () => { chat.draft = inp.value; });
-    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); f.requestSubmit(); } });
-    const go = el("button", "round-btn dark"); go.type = "submit"; go.setAttribute("aria-label", "Send"); go.append(icon("chevronRight", 20, 2.4)); go.disabled = chat.state !== "open";
-    f.append(cam, inp, go);
-    f.addEventListener("submit", (e) => { e.preventDefault(); if (chatSend(inp.value)) { chat.draft = ""; } });
-    parts.push(f);
-    crewShell(parts, "ask");
-    list.lastElementChild && list.lastElementChild.scrollIntoView({ block: "end" });
-    window.scrollTo(0, document.body.scrollHeight);
-    if (chat.state === "open") { const t = document.querySelector(".composer textarea"); if (t && !matchMedia("(pointer:coarse)").matches) t.focus(); }
+  function drawCrewChat() {
+    if (location.hash !== "#ask") return;
+    const v = chatView("crew", drawCrewChat, () => { crewData = null; });
+    crewShell(v.parts, "ask"); scrollChat();
+  }
+  async function renderOwnerAssistant() {
+    shell([el("h2", null, "Assistant"), el("p", "mono", "Loading…")]);
+    await aiLoad("owner"); drawOwnerAssistant();
+  }
+  function drawOwnerAssistant() {
+    if (location.hash !== "#assistant") return;
+    const v = chatView("owner", drawOwnerAssistant, refreshOwnerUnread);
+    shell(v.parts); scrollChat();
+  }
+
+  // ---------- messages between owner and crew ----------
+  const msgWhen = (ts) => { const d = new Date(ts); const today = new Date().toDateString() === d.toDateString(); return today ? hm(ts) : d.toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "America/Vancouver" }) + " · " + hm(ts); };
+  let crewUnread = 0;
+  async function refreshCrewUnread() { try { crewUnread = await rpc("crew_unread"); } catch { crewUnread = 0; } document.querySelectorAll('[data-nav="msgs"]').forEach((a) => a.classList.toggle("has-dot", crewUnread > 0)); }
+  async function refreshOwnerUnread() {
+    let n = 0; try { n = (await rpc("msg_inbox")).unread || 0; } catch { /* not an owner */ }
+    ownerUnreadN = n; document.querySelectorAll('[data-nav="messages"]').forEach((a) => a.classList.toggle("has-dot", n > 0));
+  }
+  async function renderCrewMessages(quiet) {
+    if (!quiet) crewShell([el("p", "mono", "Loading…")], "msgs");
+    let d; try { d = await rpc("crew_messages"); } catch (e) { if (!quiet) renderFatal(friendly(e)); return; }
+    if (location.hash !== "#msgs") return;
+    crewUnread = 0;
+    const draft = document.querySelector(".composer textarea")?.value || "";
+    const head = el("div", "page-head"); const h = el("h1", "display", "Messages"); h.style.cssText = "font-size:30px;margin:6px 0 2px";
+    head.append(h, el("p", "note", `With ${d.boss || "your boss"} at ${d.business}.`));
+    const list = el("div", "chat");
+    if (!d.messages.length) list.append(el("p", "note", "No messages yet. Write to your boss below."));
+    bubbles(list, d.messages.map((m) => ({ role: m.from === "crew" ? "user" : "agent", body: m.body, tag: m.from === "owner" ? (m.to_all ? "To everyone" : null) : null, time: msgWhen(m.created_at) })));
+    const err = el("div", "err");
+    const f = composer({ placeholder: "Message " + (d.boss ? d.boss.split(" ")[0] : "your boss"), draft,
+      onSend: async (v) => { try { await rpc("crew_msg_send", { p_body: v }); f.querySelector("textarea").value = ""; renderCrewMessages(true); } catch (e) { err.textContent = friendly(e); } } });
+    const wasBottom = quiet ? window.innerHeight + window.scrollY >= document.body.scrollHeight - 40 : true;
+    crewShell([head, list, err, f], "msgs");
+    if (wasBottom) scrollChat();
+    clearTimeout(pollT); pollT = setTimeout(() => { if (location.hash === "#msgs" && !document.hidden) renderCrewMessages(true); }, 15000);
+  }
+
+  async function renderMessages(sub) {
+    if (sub) return renderThread(sub === "all" ? null : sub);
+    shell([el("h2", null, "Messages"), el("p", "mono", "Loading…")]);
+    let d; try { d = await rpc("msg_inbox"); } catch (e) { return renderFatal(friendly(e)); }
+    if (location.hash !== "#messages") return;
+    const parts = [el("h2", null, "Messages"), el("p", "note", "Write to one crew member, or send a note to everyone. Crew see it in their app.")];
+    const lc = el("div", "list-card"); lc.style.marginTop = "16px";
+    const last = d.announcements[0];
+    lc.append(li({ icon: "users", title: "Everyone", sub: last ? last.body : "Send a note to the whole crew", right: last ? msgWhen(last.created_at) : "", onClick: () => { location.hash = "messages-all"; } }));
+    d.threads.forEach((t) => lc.append(li({ initial: (t.name || "?")[0], title: t.name + (t.active ? "" : " (off)"), sub: t.last ? (t.last_from === "owner" ? "You: " : "") + t.last : (t.joined ? "No messages yet" : "Hasn't joined yet"),
+      right: t.unread ? el("span", "pill brand", `${t.unread} new`) : (t.last_at ? msgWhen(t.last_at) : ""), tint: t.unread > 0, onClick: () => { location.hash = "messages-" + t.member_id; } })));
+    parts.push(lc);
+    if (!d.threads.length) { const p = el("p", "note"); p.append("No crew yet. "); const a = el("a", null, "Invite your crew"); a.href = "#team"; p.append(a); parts.push(p); }
+    shell(parts); refreshOwnerUnread();
+    clearTimeout(pollT); pollT = setTimeout(() => { if (location.hash === "#messages" && !document.hidden) renderMessages(); }, 20000);
+  }
+  async function renderThread(memberId, quiet) {
+    const hash = "#messages-" + (memberId || "all");
+    if (!quiet) shell([el("p", "mono", "Loading…")]);
+    let d; try { d = await rpc("msg_thread", { p_member: memberId }); } catch (e) { if (!quiet) renderFatal(friendly(e)); return; }
+    if (location.hash !== hash) return;
+    const draft = document.querySelector(".composer textarea")?.value || "";
+    const bk = el("a", "back"); bk.href = "#messages"; bk.append(icon("chevronLeft", 18), "Messages");
+    const name = d.member ? d.member.name : "Everyone";
+    const parts = [bk, el("h2", null, name), el("p", "note", d.member ? (d.member.joined ? "Messages show up in their crew app." : "They haven't joined yet; they'll see these once they do.") : "A note to your whole crew. Everyone sees it in their app.")];
+    const list = el("div", "chat wide");
+    if (!d.messages.length) list.append(el("p", "note", "No messages yet."));
+    bubbles(list, d.messages.map((m) => ({ role: m.from === "owner" ? "user" : "agent", body: m.body, time: msgWhen(m.created_at) })));
+    if (d.member && d.member.read_at && d.messages.length && d.messages[d.messages.length - 1].from === "owner" && new Date(d.member.read_at) >= new Date(d.messages[d.messages.length - 1].created_at)) list.append(el("span", "seen", "Seen"));
+    const err = el("div", "err");
+    const f = composer({ inline: true, placeholder: d.member ? "Message " + name.split(" ")[0] : "Message everyone", draft,
+      onSend: async (v) => { try { await rpc("msg_send", { p_member: memberId, p_body: v }); f.querySelector("textarea").value = ""; renderThread(memberId, true); } catch (e) { err.textContent = friendly(e); } } });
+    shell([...parts, list, err, f]); scrollChat(); refreshOwnerUnread();
+    clearTimeout(pollT); pollT = setTimeout(() => { if (location.hash === hash && !document.hidden) renderThread(memberId, true); }, 15000);
   }
 
   // ---------- phase 2: shared bits ----------
