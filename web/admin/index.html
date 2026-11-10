@@ -45,6 +45,8 @@ a { color: var(--ink); text-underline-offset: 2px; }
 .login-card .btn.primary { padding: 12px 18px; font-size: .9375rem; }
 .field { display: flex; flex-direction: column; gap: 6px; font: 400 11px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .field input, .field select, .field textarea { font: 400 .9375rem/1.4 var(--body); letter-spacing: 0; text-transform: none; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-sm); padding: 10px 12px; color: var(--ink); width: 100%; }
+.field input[type="checkbox"] { width: 18px; height: 18px; padding: 0; margin: 0; flex: none; accent-color: var(--fill); }
+.field.toggle { flex-direction: row; align-items: center; gap: 10px; cursor: pointer; font: 500 .9375rem/1.4 var(--body); letter-spacing: 0; text-transform: none; color: var(--ink); }
 .field input:focus, .field select:focus, .field textarea:focus, .search:focus { outline: none; border-color: var(--ink); }
 .field .sub, .field span.sub { font: 400 .8125rem var(--body); letter-spacing: 0; text-transform: none; }
 .err { color: var(--bad); font-size: .8125rem; min-height: 1.2em; }
@@ -1090,7 +1092,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
       num("Invite links valid for (days)", "invite_valid_days", same, Math.round, "1"),
     ];
     const cities = el("label", "field full", "Service cities (one per line)"); const ta = el("textarea"); ta.rows = 6; ta.value = (s.service_cities || []).join("\n"); cities.append(ta); g.append(cities);
-    const tpl = el("label", "field full"); const cb = el("input"); cb.type = "checkbox"; cb.checked = s.whatsapp_templates_enabled === true; tpl.style.flexDirection = "row"; tpl.style.alignItems = "center"; tpl.style.gap = "8px"; tpl.append(cb, "Send WhatsApp template messages automatically"); g.append(tpl);
+    const tpl = el("label", "field full toggle"); const cb = el("input"); cb.type = "checkbox"; cb.checked = s.whatsapp_templates_enabled === true; tpl.append(cb, "Send WhatsApp template messages automatically"); g.append(tpl);
     const err = el("div", "err"); const save = el("button", "btn primary", "Save rules"); save.type = "submit";
     f.append(g, save, err); page.append(f);
     f.addEventListener("submit", async (e) => {
