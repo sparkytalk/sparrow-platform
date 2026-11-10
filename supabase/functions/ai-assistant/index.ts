@@ -34,6 +34,7 @@ const CREW_TOOLS: Tool[] = [
   { name: 'flag_low_stock', description: 'Flag a tool or supply as low or out, on a truck or in the yard.', input_schema: obj({ item: S('e.g. deck screws'), location_name: S('e.g. Truck 2 or Yard'), status: { type: 'string', enum: ['low', 'out'] } }, ['item']), write: true },
   { name: 'request_time_off', description: 'Ask for days off. The app approves it automatically if asked early enough with nothing booked.', input_schema: obj({ start_date: DATE('First day off'), end_date: DATE('Last day off'), reason: S('Reason if given') }, ['start_date']), write: true },
   { name: 'message_boss', description: 'Send a written message to their boss in the Messages tab.', input_schema: obj({ text: S('The message') }, ['text']), write: true },
+  { name: 'read_messages', description: 'Read recent messages from their boss (and notes sent to the whole crew).', input_schema: obj({}) },
 ]
 
 const OWNER_TOOLS: Tool[] = [
@@ -76,6 +77,7 @@ async function runTool(kind: Kind, name: string, a: Any, db: SupabaseClient, ctx
       case 'flag_low_stock': await rpc('crew_flag_stock', { p_location: null, p_location_name: a.location_name || null, p_item: a.item, p_status: a.status || 'low' }); return { ok: true }
       case 'request_time_off': { const d = await rpc('crew_request_time_off', { p_start: day(a.start_date), p_end: day(a.end_date) ?? day(a.start_date), p_reason: a.reason || null }); return { ok: true, auto_approved: d.auto_approved, clashes: d.clashes, notice_days: d.notice_days } }
       case 'message_boss': await rpc('crew_msg_send', { p_body: a.text }); return { ok: true }
+      case 'read_messages': { const d = await rpc('crew_messages'); return { boss: d.boss, messages: (d.messages ?? []).slice(-15) } }
     }
   } else {
     switch (name) {
