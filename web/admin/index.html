@@ -162,7 +162,8 @@ a { color: var(--ink); text-underline-offset: 2px; }
 .grid-form .full { grid-column: 1 / -1; }
 .checks { display: flex; flex-wrap: wrap; gap: 6px; }
 .checks label { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: var(--r-full); padding: 6px 12px; font: 500 .8125rem var(--body); letter-spacing: 0; text-transform: none; color: var(--ink); background: var(--surface); cursor: pointer; }
-.checks input { accent-color: var(--fill); }
+.checks input, .field .checks input { accent-color: var(--fill); width: 16px; height: 16px; padding: 0; margin: 0; border: 0; flex: none; }
+.checks label:has(input:checked) { border-color: var(--fill); font-weight: 600; }
 .linkbox { font: 400 .8125rem var(--mono); background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; overflow-wrap: anywhere; user-select: all; }
 .doclist { display: flex; flex-direction: column; gap: 8px; }
 .docrow { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
