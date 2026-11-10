@@ -473,7 +473,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     return sel;
   }
   async function assign(j, cid) {
-    const { data, error } = await sb.rpc("admin_assign_contractor", { p_job: j.id, p_contractor: cid || null });
+    const { data, error } = await sb.schema("admin").rpc("admin_assign_contractor", { p_job: j.id, p_contractor: cid || null });
     if (error) throw error;
     const c = activeCons.find((x) => x.id === cid);
     toast(cid ? `${j.ref} assigned to ${c ? c.business_name : "contractor"}` : `${j.ref} unassigned`);
@@ -770,7 +770,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
       f.addEventListener("submit", async (e) => {
         e.preventDefault(); err.textContent = ""; go.disabled = true;
         const p = { business_name: bn.input.value, contact_name: cn.input.value, email: em.input.value, phone: ph.input.value, services: [...sv.querySelectorAll("input:checked")].map((i) => i.value) };
-        const { data, error } = await sb.rpc("admin_invite_contractor", { p });
+        const { data, error } = await sb.schema("admin").rpc("admin_invite_contractor", { p });
         if (error) { err.textContent = errMsg(error); go.disabled = false; return; }
         formHost.replaceChildren(linkCard(`Invite created for ${p.business_name}`, data.token, p.phone, p.contact_name));
         toast("Invite created"); loadList();
@@ -902,14 +902,14 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
         acts.append(view);
         if (d.status !== "accepted") {
           const ok = el("button", "btn primary", "Accept"); ok.type = "button";
-          ok.addEventListener("click", async () => { ok.disabled = true; const { error } = await sb.rpc("admin_review_document", { p_document: d.id, p_accept: true, p_note: null }); if (error) { ok.disabled = false; return toast(errMsg(error)); } toast("Accepted"); render(); });
+          ok.addEventListener("click", async () => { ok.disabled = true; const { error } = await sb.schema("admin").rpc("admin_review_document", { p_document: d.id, p_accept: true, p_note: null }); if (error) { ok.disabled = false; return toast(errMsg(error)); } toast("Accepted"); render(); });
           acts.append(ok);
         }
         if (d.status !== "rejected") {
           const no = el("button", "btn danger", "Ask for a new upload"); no.type = "button";
           no.addEventListener("click", () => {
             const f = el("div", "toolbar"); const i = el("input", "search grow"); i.placeholder = "What's wrong? The contractor sees this."; const s = el("button", "btn danger", "Send"); s.type = "button";
-            s.addEventListener("click", async () => { const { error } = await sb.rpc("admin_review_document", { p_document: d.id, p_accept: false, p_note: i.value }); if (error) return toast(errMsg(error)); toast("Sent back to the contractor"); render(); });
+            s.addEventListener("click", async () => { const { error } = await sb.schema("admin").rpc("admin_review_document", { p_document: d.id, p_accept: false, p_note: i.value }); if (error) return toast(errMsg(error)); toast("Sent back to the contractor"); render(); });
             f.append(i, s); row.append(f); no.disabled = true; i.focus();
           });
           acts.append(no);
@@ -926,7 +926,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     const sc = el("div", "card"); sc.append(el("div", "title", "Status"));
     const allAccepted = ["insurance", "worksafebc", "licence", "photo_id"].every((kd) => byKind[kd] && byKind[kd].status === "accepted");
     const sacts = el("div", "toolbar");
-    const setStatus = async (status, reason) => { const { error } = await sb.rpc("admin_set_contractor_status", { p_contractor: id, p_status: status, p_reason: reason || null }); if (error) return toast(errMsg(error)); toast("Status saved"); refreshBadges(); render(); };
+    const setStatus = async (status, reason) => { const { error } = await sb.schema("admin").rpc("admin_set_contractor_status", { p_contractor: id, p_status: status, p_reason: reason || null }); if (error) return toast(errMsg(error)); toast("Status saved"); refreshBadges(); render(); };
     if (k.status !== "active") {
       const a = el("button", "btn primary", "Activate: start Sparrow jobs"); a.type = "button";
       a.disabled = !k.in_house && (!allAccepted || !accepted);
@@ -943,7 +943,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     ih.append(ihc, iht);
     ihc.addEventListener("change", async () => {
       ihc.disabled = true;
-      const { error } = await sb.rpc("admin_set_contractor_in_house", { p_contractor: id, p_in_house: ihc.checked });
+      const { error } = await sb.schema("admin").rpc("admin_set_contractor_in_house", { p_contractor: id, p_in_house: ihc.checked });
       if (error) { ihc.checked = !ihc.checked; ihc.disabled = false; return toast(errMsg(error)); }
       toast(ihc.checked ? "Marked as in-house" : "No longer in-house"); render();
     });
@@ -956,7 +956,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     const lk = el("button", "btn", k.user_id ? "Make password reset link" : "Make new invite link"); lk.type = "button";
     const lhost = el("div");
     lk.addEventListener("click", async () => {
-      const { data, error } = await sb.rpc("admin_contractor_link", { p_contractor: id, p_kind: k.user_id ? "reset" : "invite" });
+      const { data, error } = await sb.schema("admin").rpc("admin_contractor_link", { p_contractor: id, p_kind: k.user_id ? "reset" : "invite" });
       if (error) return toast(errMsg(error));
       lhost.replaceChildren(linkCard(k.user_id ? "Password reset link" : "New invite link", data.token, k.phone_e164, k.contact_name));
     });
@@ -964,7 +964,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
 
     // activity
     const ac = el("div", "card"); ac.append(el("div", "title", "Activity"));
-    const { data: log } = await sb.from("audit_log").select("actor, action, created_at, table_name, row_id").or(`row_id.eq.${id},and(table_name.eq.contractor_documents,actor.eq.contractor)`).order("created_at", { ascending: false }).limit(30);
+    const { data: log } = await sb.schema("admin").from("audit_log").select("actor, action, created_at, table_name, row_id").or(`row_id.eq.${id},and(table_name.eq.contractor_documents,actor.eq.contractor)`).order("created_at", { ascending: false }).limit(30);
     const docIds = new Set((docs.data || []).map((d) => d.id));
     const rows = (log || []).filter((x) => x.row_id === id || docIds.has(x.row_id));
     if (!rows.length) ac.append(el("div", "sub", "Nothing yet."));
@@ -1064,7 +1064,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
   // ---------- settings ----------
   async function renderSettings() {
     const page = el("div", "page"); page.style.maxWidth = "720px"; view.append(page);
-    const { data, error } = await sb.from("settings").select("key, value");
+    const { data, error } = await sb.schema("admin").from("settings").select("key, value");
     if (error) return fail(page, error);
     const s = Object.fromEntries(data.map((r) => [r.key, r.value]));
     const f = el("form", "card");
@@ -1101,7 +1101,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
       p.service_cities = ta.value.split("\n").map((x) => x.trim()).filter(Boolean);
       p.whatsapp_templates_enabled = cb.checked;
       save.disabled = true;
-      const { error: e2 } = await sb.rpc("admin_save_settings", { p });
+      const { error: e2 } = await sb.schema("admin").rpc("admin_save_settings", { p });
       save.disabled = false;
       if (e2) return (err.textContent = errMsg(e2));
       toast("Rules saved");
@@ -1136,7 +1136,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
 
   // ---------- auth ----------
   async function start(session) {
-    const { data: me, error } = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
+    const { data: me, error } = await sb.schema("admin").from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
     if (error || !me) {
       await sb.auth.signOut();
       $("app").hidden = true; $("login").hidden = false;

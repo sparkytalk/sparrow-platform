@@ -29,7 +29,7 @@ async function mailer() {
   if (transport) return transport
   const pass = (Deno.env.get('SMTP_PASSWORD') ?? '').trim()
   if (!pass) throw new Error('Email sending is not set up yet (SMTP_PASSWORD missing).')
-  const { data } = await db.from('settings').select('value').eq('key', 'smtp').single()
+  const { data } = await db.schema('admin').from('settings').select('value').eq('key', 'smtp').single()
   const s = data?.value ?? {}
   fromAddr = `"${s.from_name ?? 'Sparrow Pros'}" <${s.user}>`
   transport = nodemailer.createTransport({ host: s.host ?? 'smtp.hostinger.com', port: Number(s.port ?? 465), secure: Number(s.port ?? 465) === 465, auth: { user: s.user, pass } })
@@ -57,18 +57,18 @@ async function send(kind: string, to: string, subject: string, o: { hello: strin
   try {
     const t = await mailer()
     await t.sendMail({ from: fromAddr, to, subject, html: page(o), text: text(o) })
-    await db.from('mail_log').insert({ kind, to_email: to.toLowerCase(), actor, ok: true })
+    await db.schema('admin').from('mail_log').insert({ kind, to_email: to.toLowerCase(), actor, ok: true })
     return null
   } catch (e) {
     const msg = String((e as Error)?.message ?? e).slice(0, 300)
     console.error('send', kind, msg)
-    await db.from('mail_log').insert({ kind, to_email: to.toLowerCase(), actor, ok: false, error: msg })
+    await db.schema('admin').from('mail_log').insert({ kind, to_email: to.toLowerCase(), actor, ok: false, error: msg })
     return msg
   }
 }
 
 async function recent(to: string, kind: string, minutes: number) {
-  const { count } = await db.from('mail_log').select('id', { count: 'exact', head: true })
+  const { count } = await db.schema('admin').from('mail_log').select('id', { count: 'exact', head: true })
     .eq('to_email', to.toLowerCase()).eq('kind', kind).gte('created_at', new Date(Date.now() - minutes * 60e3).toISOString())
   return count ?? 0
 }
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       const done = { ok: true, message: `If ${email} has a Sparrow Pros account, a sign-in link is on its way. Check your inbox.` }
       if (await recent(email, 'signin', 15) >= 3) return json(done)
       const { data: who } = await db.rpc('mail_signin_target', { p_email: email })
-      if (!who?.user_id) { await db.from('mail_log').insert({ kind: 'signin', to_email: email, ok: false, error: 'no account' }); return json(done) }
+      if (!who?.user_id) { await db.schema('admin').from('mail_log').insert({ kind: 'signin', to_email: email, ok: false, error: 'no account' }); return json(done) }
       const { data: link, error } = await db.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo: PROS } })
       if (error || !link?.properties?.action_link) throw new Error(error?.message ?? 'link failed')
       const fail = await send('signin', email, 'Your Sparrow Pros sign-in link', {

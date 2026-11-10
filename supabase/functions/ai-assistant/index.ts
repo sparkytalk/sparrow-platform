@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
   try {
     const check = req.headers.get('x-ops-check')
     if (check) {
-      const { data } = await admin.from('ops_kv').select('v').eq('k', 'el_relay').single()
+      const { data } = await admin.schema('admin').from('ops_kv').select('v').eq('k', 'el_relay').single()
       if (check !== data?.v?.secret) return json({ error: 'forbidden' }, 403)
       return json({ key_set: !!KEY })
     }
