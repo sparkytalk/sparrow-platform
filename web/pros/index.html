@@ -197,7 +197,10 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
   const SUPABASE_URL = "https://cskcmpayxaqyqlqhepup.supabase.co";
   const SUPABASE_KEY = "sb_publishable_kScNmyqH2eLLh24O2czVYA_pViZ08DL"; // public key; access is enforced by database rules
   const AUTH_FN = SUPABASE_URL + "/functions/v1/contractor-auth";
+  // Password-reset links land here with #...type=recovery; remember it before anything clears the address
+  let recoveryMode = /(^|[#&])type=recovery(&|$)/.test(location.hash);
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sb.auth.onAuthStateChange((ev) => { if (ev === "PASSWORD_RECOVERY") recoveryMode = true; });
   const root = document.getElementById("root");
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -438,6 +441,31 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     });
   }
 
+  function renderNewPassword() {
+    const pw = field("New password (at least 10 characters)", "", { type: "password", autocomplete: "new-password" });
+    const pw2 = field("Type it again", "", { type: "password", autocomplete: "new-password" });
+    const err = el("div", "err"); const go = el("button", "btn", "Save new password"); go.type = "submit";
+    const fields = el("div", "stack"); fields.style.margin = "20px 0 16px"; fields.append(pw, pw2);
+    const card = authPage([el("h1", null, "Set a new password"), el("p", "note", "Choose a new password for your account."), fields, go, err]);
+    card.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = "";
+      if (pw.input.value.length < 10) return (err.textContent = "Use at least 10 characters.");
+      if (pw.input.value !== pw2.input.value) return (err.textContent = "The two passwords don't match.");
+      go.disabled = true;
+      const { error } = await sb.auth.updateUser({ password: pw.input.value });
+      if (error) { go.disabled = false; err.textContent = /different from the old/i.test(error.message) ? "Pick a password you haven't used before." : error.message; return; }
+      recoveryMode = false; toast("Password saved"); route();
+    });
+  }
+  async function adminElsewhere() {
+    let admin = false; try { admin = await rpc("is_admin"); } catch { /* not admin */ }
+    if (!admin) return false;
+    const a = el("a", "btn", "Open the admin dashboard"); a.href = "https://admin.sparrowlabs.ca/"; a.style.marginTop = "16px";
+    authPage([el("h1", null, "You're a Sparrow admin"), el("p", "note", "This login is for the admin dashboard, not Sparrow Pros. Your password works there."), a]);
+    await sb.auth.signOut();
+    return true;
+  }
+
   // ---------- routing ----------
   let who = null;
   async function route() {
@@ -450,6 +478,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     }
     if (h.startsWith("join-")) return renderJoin(h.slice(5));
     if (!data.session) return renderLogin();
+    if (recoveryMode) return renderNewPassword();
     let pending = null; try { pending = localStorage.getItem("pending_invite"); localStorage.removeItem("pending_invite"); } catch { /* private mode */ }
     if (pending) {
       try {
@@ -463,7 +492,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (who.kind === "crew") return routeCrew(h);
     if (who.kind === "crew_off") { await sb.auth.signOut(); return renderLogin("Your crew access is turned off. Ask your boss to turn it back on."); }
     try { await loadMe(); } catch (e) { return renderFatal(friendly(e)); }
-    if (!me.ok) { await sb.auth.signOut(); return renderLogin("No Sparrow Pros account uses this login. If you were invited, open your invite link and choose how to sign in there."); }
+    if (!me.ok) { if (await adminElsewhere()) return; await sb.auth.signOut(); return renderLogin("No Sparrow Pros account uses this login. If you were invited, open your invite link and choose how to sign in there."); }
     if (h.startsWith("s-")) return renderSection(h.slice(2));
     if (h === "account") return renderAccount();
     if (h === "jobs") return renderJobs();
