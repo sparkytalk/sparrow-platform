@@ -516,6 +516,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (h.startsWith("job-")) return renderJobDay(h.slice(4));
     if (h === "prices") return renderPrices();
     if (h === "calendar") return renderCalendar();
+    if ((CREW_TOOL_TITLES[h] || h.startsWith("messages")) && !canGetJobs()) return renderNotActive(h);
     if (h === "team") return renderTeam();
     if (h === "schedule") return renderSchedule();
     if (h === "timesheets") return renderTimesheets();
@@ -762,7 +763,19 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const i = el("input"); i.inputMode = "decimal"; i.value = cents == null ? "" : String(cents / 100); if (placeholder) i.placeholder = placeholder;
     w.append(i); w.input = i; return w;
   }
-  const canGetJobs = () => me && me.contractor && ["active", "paused", "suspended"].includes(me.contractor.status);
+  const canGetJobs = () => me && me.contractor && ["active", "paused"].includes(me.contractor.status);
+  // Crew tools (crew, schedule, hours, updates, stock, messages, assistant) switch on once the account is active.
+  const CREW_TOOL_TITLES = { team: "Crew", schedule: "Schedule", timesheets: "Timesheets", updates: "Updates", inventory: "Tools & stock", assistant: "Assistant", messages: "Messages" };
+  function renderNotActive(h) {
+    const st = me.contractor.status;
+    const title = CREW_TOOL_TITLES[h.startsWith("messages") ? "messages" : h] || "Crew tools";
+    const b = el("div", "banner info");
+    if (st === "submitted" || st === "applied") b.append(el("h3", null, "Almost there"), el("p", "small", "Sparrow is reviewing your account. " + title + " and your other crew tools switch on as soon as you're approved."));
+    else if (st === "suspended" || st === "left") b.append(el("h3", null, "Your account is on hold"), el("p", "small", (me.contractor.status_reason ? me.contractor.status_reason + " " : "") + "Contact Sparrow at info@sparrowlabs.ca."));
+    else b.append(el("h3", null, "Finish setting up first"), el("p", "small", title + " and your other crew tools switch on once your account is set up and approved by Sparrow."));
+    const r = el("div", "row"); r.append(btn("Open account", "small", () => { location.hash = "account"; })); b.append(r);
+    return shell([el("h2", null, title), b]);
+  }
 
   // ---------- jobs ----------
   const JOB_STATUS = {
