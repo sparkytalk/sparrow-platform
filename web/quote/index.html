@@ -34,7 +34,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .biz { font: 700 1.35rem/1.15 var(--display); margin: 0; letter-spacing: -.01em; }
 .contact { color: var(--muted); font-size: .8125rem; line-height: 1.45; }
 .doc-title { text-align: right; }
-.doc-title .kind { font: 700 .75rem var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
+.doc-title .kind { font: 700 .75rem var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--brand-text, var(--brand)); }
 .doc-title .ref { font: 700 1.6rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
 .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px 24px; padding: 16px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
 .meta dt { font-size: .6875rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
@@ -50,7 +50,7 @@ td .mob { display: none; font-size: .8125rem; color: var(--muted); }
 @media (max-width: 560px) { .c-qty, .c-rate { display: none; } td .mob { display: block; } }
 .totals { margin-left: auto; width: min(100%, 320px); display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-variant-numeric: tabular-nums; }
 .totals .grand { font: 700 1.25rem var(--display); padding-top: 8px; border-top: 1.5px solid var(--ink); }
-.totals .dep { color: var(--brand); font-weight: 700; }
+.totals .dep { color: var(--brand-text, var(--brand)); font-weight: 700; }
 .notes { background: var(--desk); border-radius: 10px; padding: 14px 16px; white-space: pre-wrap; }
 .small { font-size: .8125rem; color: var(--muted); }
 .fine { font-size: .75rem; color: var(--faint); display: flex; flex-direction: column; gap: 4px; }
@@ -128,7 +128,7 @@ textarea { width: 100%; border: 1px solid var(--rule); border-radius: 10px; padd
     if (k.color && /^#[0-9a-f]{6}$/i.test(k.color)) {
       document.documentElement.style.setProperty("--brand", k.color);
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(k.color.slice(i, i + 2), 16));
-      if ((r * 299 + g * 587 + b * 114) / 1000 > 160) document.documentElement.style.setProperty("--brand-ink", "#18211c");
+      if ((r * 299 + g * 587 + b * 114) / 1000 > 160) { document.documentElement.style.setProperty("--brand-ink", "#18211c"); document.documentElement.style.setProperty("--brand-text", `color-mix(in srgb, ${k.color} 55%, #000)`); }
     }
     document.title = `Quote ${q.ref} · ${k.name}`;
     root.replaceChildren();

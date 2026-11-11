@@ -30,6 +30,26 @@ p { margin: 0; }
 .card h2, .job h2 { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -.03em; line-height: 1.1; }
 .wordmark svg.bird { width: 26px; height: 22px; flex: none; color: var(--ink); }
 .logo-tile { width: 30px; height: 30px; flex: none; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.swatch { width: 42px; height: 42px; border-radius: 12px; border: 0; padding: 0; cursor: pointer; box-shadow: inset 0 0 0 1px #0000001f; }
+.swatch[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+.swatch-custom { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.swatch-custom input { width: 42px; height: 42px; border: 0; padding: 0; border-radius: 12px; background: none; cursor: pointer; }
+.brand-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 760px) { .brand-row { grid-template-columns: minmax(0, 1fr); } }
+.logo-box { width: 132px; height: 88px; border-radius: 14px; background: var(--soft); display: grid; place-items: center; overflow: hidden; color: var(--muted); font-size: 13px; }
+.logo-box img { max-width: 112px; max-height: 70px; object-fit: contain; }
+.brand-prev { --b: #f2541b; --bi: #fff; --bt: #f2541b; background: #fff; border-radius: 18px; box-shadow: 0 0 0 1px var(--line), 0 12px 30px -18px #0004; overflow: hidden; color: #18181b; }
+.brand-prev .bp-band { height: 7px; background: var(--b); }
+.brand-prev .bp-body { padding: 16px 18px 18px; display: grid; gap: 12px; }
+.brand-prev .bp-head { display: flex; align-items: center; gap: 12px; }
+.brand-prev .bp-head img { max-width: 84px; max-height: 44px; object-fit: contain; }
+.brand-prev .bp-mono { width: 42px; height: 42px; border-radius: 10px; background: var(--b); color: var(--bi); display: grid; place-items: center; font-weight: 700; font-size: 18px; }
+.brand-prev .bp-head b { display: block; font-size: 15px; }
+.brand-prev .bp-kind { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--bt); }
+.brand-prev .bp-line, .brand-prev .bp-total { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.brand-prev .bp-total { border-top: 1px solid #e4e4e7; padding-top: 10px; font-weight: 700; }
+.brand-prev .bp-btn { justify-self: start; background: var(--b); color: var(--bi); border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 14px; }
 .side .wordmark { margin: 0 10px 24px; }
 .side .biz-status { padding: 0 12px 6px; }
 .field { display: flex; flex-direction: column; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -1711,7 +1731,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       add("Address", c.addresses.map((a) => [a.unit ? a.unit + "-" + a.address_line : a.address_line, a.city].join(", ")).join("\n"));
       add("Notes", c.notes); add("Jobs", String(c.jobs));
       const r = el("div", "row");
-      r.append(btn("New job", "primary small", () => { close(); jobForm(null, c); }), btn("Edit", "small", () => { close(); customerForm(c, () => drawCustomers()); }));
+      r.append(btn("New quote", "primary small", () => { close(); jobForm(null, c, { quote: true }); }), btn("New job", "small", () => { close(); jobForm(null, c); }), btn("Edit", "small", () => { close(); customerForm(c, () => drawCustomers()); }));
       m.append(kv, r);
     });
   }
@@ -1733,9 +1753,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
   }
 
   // ---------- add or edit a job ----------
-  async function jobForm(j, preset) {
+  async function jobForm(j, preset, opts = {}) {
     if (!custCache) { try { await loadCustomers(); } catch (e) { return toast(friendly(e)); } }
-    modal(j ? "Edit job" : "New job", (m, close) => {
+    modal(j ? "Edit job" : opts.quote ? "New quote" : "New job", (m, close) => {
       const form = el("form", "stack");
       const title = field("What's the job?", j ? (j.title || j.service) : "", { placeholder: "Fence repair, kitchen reno, deck stain…" });
       const custSel = selectField("Customer", [["", "Pick a customer"], ["__new", "+ New customer"], ...custCache.map((c) => [c.id, c.name + (c.phone ? " · " + prettyPhone(c.phone) : "")])], j ? j.customer_id : preset ? preset.id : "");
@@ -1753,8 +1773,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       const fillAddr = () => { const c = custCache.find((x) => x.id === custSel.input.value); if (c && c.addresses[0] && !addr.input.value) { const a = c.addresses[0]; addr.input.value = a.address_line || ""; unit.input.value = a.unit || ""; city.input.value = a.city || ""; postal.input.value = a.postal_code || ""; } };
       custSel.input.addEventListener("change", () => { nc.hidden = custSel.input.value !== "__new"; fillAddr(); });
       if (!j) fillAddr();
-      const err = el("div", "err"); const go = el("button", "btn primary", j ? "Save changes" : "Add job"); go.type = "submit";
-      form.append(title, custSel, nc, ag, tg, priceL, notes, el("p", "muted small", "No day yet? Leave it blank and write a quote first. The job moves to Booked when you set a day or the customer approves."), go, err);
+      if (opts.quote) { tg.hidden = true; priceL.hidden = true; }
+      const err = el("div", "err"); const go = el("button", "btn primary", j ? "Save changes" : opts.quote ? "Next: write the quote" : "Add job"); go.type = "submit";
+      form.append(title, custSel, nc, ag, tg, priceL, notes, el("p", "muted small", opts.quote ? "Next you add the line items. The customer gets a link to view and approve it." : "No day yet? Leave it blank and write a quote first. The job moves to Booked when you set a day or the customer approves."), go, err);
       form.addEventListener("submit", async (e) => {
         e.preventDefault(); err.textContent = "";
         let cents = null; try { cents = toCents(price.input.value); } catch (ex) { return (err.textContent = ex.message); }
@@ -1765,7 +1786,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
         else return (err.textContent = "Pick a customer or add a new one.");
         go.disabled = true;
         try {
-          const res = await rpc("pros_job_save", { p }); custCache = null; close(); toast(j ? "Job saved" : "Job added");
+          const res = await rpc("pros_job_save", { p }); custCache = null; close();
+          if (opts.quote) { location.hash = "quote-" + res.id; return; }
+          toast(j ? "Job saved" : "Job added");
           if (location.hash === "#jobs") renderJobs(); else location.hash = j ? "jobs" : "job-" + res.id;
         } catch (ex) { err.textContent = friendly(ex); go.disabled = false; }
       });
@@ -1773,8 +1796,92 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     });
   }
   function jobsHead() {
-    const hd = el("div", "spread"); hd.append(el("h2", null, "Jobs"), btn("New job", "primary small", () => jobForm()));
+    const hd = el("div", "spread"); const acts = el("div", "row"); acts.style.margin = "0"; acts.append(btn("New quote", "small", () => jobForm(null, null, { quote: true })), btn("New job", "primary small", () => jobForm())); hd.append(el("h2", null, "Jobs"), acts);
     const w = el("div"); w.append(hd, el("p", "muted", "Every job from first quote to paid invoice.")); return w;
+  }
+
+
+  // ---------- branding: logo + colours suggested from the logo ----------
+  const logoUrl = (path) => path ? SUPABASE_URL + "/storage/v1/object/public/branding/" + path.split("/").map(encodeURIComponent).join("/") : null;
+  const hexOf = (r, g, b) => "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+  const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const isLight = (hex) => { const [r, g, b] = rgbOf(hex); return (r * 299 + g * 587 + b * 114) / 1000 > 160; };
+  async function logoPalette(src) {
+    const img = new Image(); img.crossOrigin = "anonymous"; img.src = src; await img.decode();
+    const k = Math.min(1, 72 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round((img.naturalWidth || 1) * k)); cv.height = Math.max(1, Math.round((img.naturalHeight || 1) * k));
+    const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, cv.width, cv.height);
+    const d = cx.getImageData(0, 0, cv.width, cv.height).data; const bins = new Map(); let dark = null;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue;
+      const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (mn > 235) continue;                                    // white background
+      if (mx < 40) { dark = dark || [0, 0, 0, 0]; dark[0] += r; dark[1] += g; dark[2] += b; dark[3]++; continue; }
+      const key = (r >> 5) * 64 + (g >> 5) * 8 + (b >> 5); const e = bins.get(key) || [0, 0, 0, 0];
+      e[0] += r; e[1] += g; e[2] += b; e[3]++; bins.set(key, e);
+    }
+    const cols = [...bins.values()].map(([r, g, b, n]) => { r /= n; g /= n; b /= n; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return { r, g, b, n, score: n * (0.25 + (mx ? (mx - mn) / mx : 0)) }; }).sort((a, b) => b.score - a.score);
+    const out = []; const total = cols.reduce((t, c) => t + c.n, 0);
+    for (const c of cols) { if (c.n < Math.max(3, total * 0.03)) continue; if (out.every((o) => Math.hypot(o.r - c.r, o.g - c.g, o.b - c.b) > 110)) out.push(c); if (out.length === 5) break; }
+    const hexes = out.map((c) => hexOf(c.r, c.g, c.b));
+    if (dark && dark[3] > 20 && hexes.length < 5) hexes.push(hexOf(dark[0] / dark[3], dark[1] / dark[3], dark[2] / dark[3]));
+    return hexes;
+  }
+  function brandingCard() {
+    const c = me.contractor;
+    let logoPath = c.brand_logo_path || null, color = /^#[0-9a-f]{6}$/i.test(c.brand_color || "") ? c.brand_color : "#f2541b", palette = [], localUrl = null;
+    const sec = el("section", "card");
+    sec.append(el("h3", null, "Logo and colour"), el("p", "muted small", "Shown on every quote and invoice your customers open. Upload your logo and we'll suggest colours from it, or pick your own."));
+    const row = el("div", "brand-row"); const left = el("div", "stack"); const right = el("div", "stack");
+    const box = el("div", "logo-box");
+    const fileIn = el("input"); fileIn.type = "file"; fileIn.accept = "image/png,image/jpeg,image/webp"; fileIn.hidden = true;
+    const lrow = el("div", "row"); lrow.style.margin = "0";
+    const up = btn("Upload logo", "small", () => fileIn.click()); const rm = btn("Remove", "small ghost", () => { logoPath = null; localUrl = null; palette = []; draw(); });
+    lrow.append(up, rm);
+    const swLabel = el("p", "muted small"); const sw = el("div", "swatches");
+    const cl = el("label", "swatch-custom"); const ci = el("input"); ci.type = "color"; ci.setAttribute("aria-label", "Pick your own colour"); cl.append(ci, "Your own");
+    ci.addEventListener("input", () => { color = ci.value; draw(); });
+    const lerr = el("div", "err");
+    // preview
+    const pv = el("div", "brand-prev"); pv.setAttribute("aria-label", "Preview of your quote");
+    const band = el("div", "bp-band"), body = el("div", "bp-body"), head = el("div", "bp-head"), who = el("div");
+    who.append(el("b", null, c.invoice_display_name || c.business_name), el("span", "bp-kind", "QUOTE " + (c.invoice_prefix || "") + "Q1001"));
+    const l1 = el("div", "bp-line"); l1.append(el("span", null, "Replace 2 fence panels"), el("span", null, "$500.00"));
+    const l2 = el("div", "bp-line"); l2.append(el("span", null, "GST 5%"), el("span", null, "$25.00"));
+    const tot = el("div", "bp-total"); tot.append(el("span", null, "Total"), el("span", null, "$525.00"));
+    body.append(head, l1, l2, tot, el("span", "bp-btn", "Approve quote")); pv.append(band, body);
+    const draw = () => {
+      const src = localUrl || logoUrl(logoPath);
+      box.replaceChildren(src ? Object.assign(el("img"), { src, alt: "Your logo" }) : "No logo yet");
+      up.textContent = src ? "Change logo" : "Upload logo"; rm.hidden = !src;
+      head.replaceChildren(src ? Object.assign(el("img"), { src, alt: "" }) : el("div", "bp-mono", (c.invoice_display_name || c.business_name || "?")[0].toUpperCase()), who);
+      sw.replaceChildren();
+      swLabel.textContent = palette.length ? "Colours from your logo" : "Colour";
+      const opts = palette.length ? palette : ["#f2541b", "#1d7350", "#1f4fd1", "#7c3aed", "#0a0a0a"];
+      opts.forEach((h) => { const b = el("button", "swatch"); b.type = "button"; b.style.background = h; b.title = h; b.setAttribute("aria-label", "Use " + h); b.setAttribute("aria-pressed", String(h.toLowerCase() === color.toLowerCase())); b.addEventListener("click", () => { color = h; draw(); }); sw.append(b); });
+      ci.value = color; sw.append(cl);
+      pv.style.setProperty("--b", color); pv.style.setProperty("--bi", isLight(color) ? "#18181b" : "#fff");
+      pv.style.setProperty("--bt", isLight(color) ? `color-mix(in srgb, ${color} 55%, #000)` : color);
+    };
+    const suggest = async (src, pick) => { try { palette = await logoPalette(src); if (pick && palette.length) color = palette[0]; } catch (e) { palette = []; } draw(); };
+    fileIn.addEventListener("change", async () => {
+      lerr.textContent = ""; const f = fileIn.files[0]; fileIn.value = ""; if (!f) return;
+      if (f.size > 2 * 1024 * 1024) return (lerr.textContent = "That image is over 2 MB. Try a smaller one.");
+      up.disabled = true; up.textContent = "Uploading…";
+      try { logoPath = await uploadFile("branding", f); localUrl = URL.createObjectURL(f); await suggest(localUrl, true); toast("Logo added. Pick a colour, then save."); }
+      catch (e) { lerr.textContent = friendly(e); } finally { up.disabled = false; draw(); }
+    });
+    const save = btn("Save logo and colour", "primary small", async () => {
+      save.disabled = true; lerr.textContent = "";
+      try { me = await rpc("pros_profile_save", { p: { brand_logo_path: logoPath || "", brand_color: color } }); toast("Saved. Your quotes and invoices now use it."); }
+      catch (e) { lerr.textContent = friendly(e); } finally { save.disabled = false; }
+    });
+    save.style.cssText = "align-self:flex-start;justify-self:start;width:auto;margin-top:14px";
+    left.append(box, lrow, fileIn, swLabel, sw);
+    right.append(el("p", "muted small", "Preview"), pv);
+    row.append(left, right); sec.append(row, lerr, save);
+    draw(); if (logoPath) suggest(logoUrl(logoPath), false);
+    return sec;
   }
 
   // ---------- settings for subscribers ----------
@@ -1783,7 +1890,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const card = (title, desc, fields, keys) => {
       const f = el("form", "card"); f.append(el("h3", null, title)); if (desc) f.append(el("p", "muted small", desc));
       const g = el("div", "grid2"); fields.forEach((x) => g.append(x)); f.append(g);
-      const err = el("div", "err"); const save = el("button", "btn primary small", "Save"); save.type = "submit"; save.style.cssText = "justify-self:start;width:auto;margin-top:14px"; f.append(save, err);
+      const err = el("div", "err"); const save = el("button", "btn primary small", "Save"); save.type = "submit"; save.style.cssText = "align-self:flex-start;justify-self:start;width:auto;margin-top:14px"; f.append(save, err);
       f.addEventListener("submit", async (e) => {
         e.preventDefault(); err.textContent = ""; save.disabled = true;
         const p = {}; keys.forEach(([k, fld]) => { p[k] = fld.input.value; });
@@ -1810,7 +1917,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       address_line: field("Business address (optional)", c.address_line), city: field("City", c.city), postal_code: field("Postal code", c.postal_code), gst_number: field("GST number (if registered)", c.gst_number) };
     const trade = tradeSelect(c.trade); biz.trade = trade;
     const inv = { invoice_display_name: field("Name on quotes and invoices", c.invoice_display_name), invoice_prefix: field("Invoice number prefix", c.invoice_prefix),
-      invoice_website: field("Website (optional)", c.invoice_website), brand_color: field("Brand colour", c.brand_color || "#f2541b", { type: "color" }),
+      invoice_website: field("Website (optional)", c.invoice_website),
       invoice_terms: field("Terms shown on quotes and invoices (optional)", c.invoice_terms, { textarea: true, full: true }) };
     const pay = { payout_interac_email: field("e-Transfer email", c.payout_interac_email, { type: "email" }),
       pay_instructions: field("Other ways to pay (optional)", c.pay_instructions, { textarea: true, full: true, placeholder: "Cheque payable to …, due within 14 days." }) };
@@ -1818,6 +1925,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const acct = el("section", "card"); acct.append(el("h3", null, "Sign-in"), el("p", "muted small", "Signed in as " + (c.email || "")));
     const r = el("div", "row"); r.append(btn("Sign out", "small", signOut)); acct.append(r);
     shell([el("h2", null, "Settings"), plan,
+      brandingCard(),
       card("Business", null, Object.values(biz), keys(biz)),
       card("Quotes and invoices", "How your quotes and invoices look to customers.", Object.values(inv), keys(inv)),
       card("Getting paid", "Shown on every invoice so customers know how to pay you. Money goes straight to you, never through Sparrow.", Object.values(pay), keys(pay)),
@@ -1841,7 +1949,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const parts = [head];
     if (isSub()) {
       const pb = planBanner(); if (pb) parts.push(pb);
-      const qa = el("div", "row"); qa.append(btn("New job", "primary", () => jobForm()), btn("New customer", "", () => customerForm(null, () => renderOwnerHome())));
+      const qa = el("div", "row"); qa.append(btn("New job", "primary", () => jobForm()), btn("New quote", "", () => jobForm(null, null, { quote: true })), btn("New customer", "ghost", () => customerForm(null, () => renderOwnerHome())));
       parts.push(qa);
     }
     if (c.status !== "active") {
