@@ -5,10 +5,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 // actions: upload {files:[{path, content}]}, patch {path, edits:[{old,new}], expect_sha}
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json" } });
-const sha = async (t: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const sha = async (t: string | Uint8Array) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", typeof t === "string" ? new TextEncoder().encode(t) : t))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
-async function put(base: string, h: Record<string, string>, path: string, content: string) {
-  const bytes = new TextEncoder().encode(content);
+async function put(base: string, h: Record<string, string>, path: string, content: string | Uint8Array) {
+  const bytes = typeof content === "string" ? new TextEncoder().encode(content) : content;
   const url = `${base}/${path}?override=true`;
   const r1 = await fetch(url, { method: "POST", headers: { ...h, "Upload-Length": String(bytes.length), "Upload-Offset": "0" } });
   await r1.text();
@@ -52,10 +52,10 @@ Deno.serve(async (req) => {
     if (!/^https:\/\/[a-z0-9-]+\.vercel\.app\//.test(src)) return json({ ok: false, error: "src_url must be a vercel.app address" }, 400);
     const r = await fetch(src, { headers: { "cache-control": "no-cache" } });
     if (!r.ok) return json({ ok: false, error: "download", status: r.status });
-    const text = await r.text();
-    const got = await sha(text);
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    const got = await sha(bytes);
     if (b.expect_sha && got !== b.expect_sha) return json({ ok: false, error: "sha_mismatch", got });
-    return json({ ok: true, result: await put(base, h, b.path, text) });
+    return json({ ok: true, result: await put(base, h, b.path, bytes) });
   }
   return json({ ok: false, error: "unknown action" }, 400);
 });
