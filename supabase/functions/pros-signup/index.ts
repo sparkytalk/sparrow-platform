@@ -1,6 +1,6 @@
-// Public sign-up for Sparrow Pros: creates the login and the business (14-day free trial) in one step.
+// Public sign-up for Sparrow Pros: creates the login (email not confirmed yet) and the business (waiting for approval).
 // POST { email, password, business_name, contact_name, phone, trade }
-// The page then signs in with the same email and password.
+// The page then asks pros-mail to send the "confirm your email" link. A Sparrow admin approves the business after that.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4'
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const { data: existing } = await db.rpc('auth_user_id_by_email', { p_email: email })
     if (existing) return json({ ok: false, exists: true, message: 'This email already has an account. Sign in instead.' })
 
-    const { data: u, error } = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { role: 'owner' } })
+    const { data: u, error } = await db.auth.admin.createUser({ email, password, email_confirm: false, user_metadata: { role: 'owner' } })
     if (error || !u.user) return json({ ok: false, message: error?.message ?? 'Could not create the account.' })
 
     const { error: e2 } = await db.rpc('pros_create_business', {

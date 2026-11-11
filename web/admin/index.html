@@ -346,7 +346,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     ]);
     $("reqBadge").textContent = h.count || "";
     $("jobBadge").textContent = j.count || "";
-    const c = await sb.from("contractors").select("id", { count: "exact", head: true }).eq("status", "submitted");
+    const c = await sb.from("contractors").select("id", { count: "exact", head: true }).in("status", ["submitted", "applied"]);
     $("conBadge").textContent = c.count || "";
   }
 
@@ -783,7 +783,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     const loadList = async () => {
       list.replaceChildren(el("div", "sub", "Loading…"));
       const { data, error } = await sb.from("contractors")
-        .select("id, business_name, in_house, contact_name, phone_e164, email, status, submitted_at, activated_at, insurance_expires_on, created_at, contractor_services(service_code), contractor_areas(city), contractor_documents(kind, status, expires_on)")
+        .select("id, kind, trade, business_name, in_house, contact_name, phone_e164, email, status, submitted_at, activated_at, insurance_expires_on, created_at, contractor_services(service_code), contractor_areas(city), contractor_documents(kind, status, expires_on)")
         .order("created_at", { ascending: false });
       if (error) return fail(list, error);
       list.replaceChildren();
@@ -795,8 +795,10 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
         card.addEventListener("click", () => { location.hash = "contractors-" + c.id; });
         const top = el("div", "row"); const g = el("div", "grow");
         g.append(el("div", "title", c.business_name), el("div", "sub", [c.contact_name, phone(c.phone_e164), c.email].filter(Boolean).join(" · ")));
-        const pills = el("div", "row"); pills.style.gap = "6px"; if (c.in_house) pills.append(el("span", "pill", "In-house")); pills.append(cpill(c.status));
+        const pills = el("div", "row"); pills.style.gap = "6px"; if (c.in_house) pills.append(el("span", "pill", "In-house")); if (c.kind === "subscriber") pills.append(el("span", "pill", "Pros app"));
+        pills.append(c.kind === "subscriber" && c.status === "applied" ? el("span", "pill info", "To approve") : cpill(c.status));
         top.append(g, pills); card.append(top);
+        if (c.kind === "subscriber") { card.append(el("div", "sub", [c.trade, "signed up " + ago(c.created_at)].filter(Boolean).join(" · "))); list.append(card); continue; }
         const live = (c.contractor_documents || []).filter((d) => d.status !== "replaced");
         const pending = live.filter((d) => d.status === "pending").length;
         const soon = live.filter((d) => d.expires_on && daysLeft(d.expires_on) <= 30).length;
@@ -809,6 +811,88 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
       }
     };
     loadList();
+  }
+
+  async function callMail(body) {
+    try {
+      const { data } = await sb.auth.getSession();
+      const r = await fetch(SUPABASE_URL + "/functions/v1/pros-mail", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (data.session ? data.session.access_token : "") }, body: JSON.stringify(body) });
+      return await r.json();
+    } catch { return { ok: false, message: "Couldn't reach Sparrow. Try again." }; }
+  }
+
+  // a business that signed up for the Sparrow Pros app (their own jobs, crew, quotes, invoices)
+  async function renderSubscriber(k, host) {
+    const id = k.id;
+    const [info, jobs, custs, crew, log] = await Promise.all([
+      sb.schema("admin").rpc("admin_signup_info", { p_contractor: id }),
+      sb.from("jobs").select("id", { count: "exact", head: true }).eq("contractor_id", id),
+      sb.from("customers").select("id", { count: "exact", head: true }).eq("contractor_id", id),
+      sb.from("team_members").select("id", { count: "exact", head: true }).eq("contractor_id", id),
+      sb.schema("admin").from("audit_log").select("actor, action, created_at").eq("row_id", id).order("created_at", { ascending: false }).limit(20),
+    ]);
+    const u = info.data || {};
+    const confirmed = !!u.email_confirmed_at;
+    const head = el("div", "card");
+    const top = el("div", "row"); const g = el("div", "grow");
+    g.append(el("h2", null, k.business_name), el("div", "sub", ["Sparrow Pros app", k.trade].filter(Boolean).join(" · ")));
+    g.firstChild.style.cssText = "font:700 1.75rem/1.1 var(--display);letter-spacing:-.02em;margin:0";
+    top.append(g, k.status === "applied" ? el("span", "pill info", "To approve") : cpill(k.status)); head.append(top);
+    if (k.status_reason) head.append(el("div", "sub", "Reason: " + k.status_reason));
+    const dl = el("dl", "kv");
+    const fact = (a, b) => { if (b == null || b === "") return; dl.append(el("dt", null, a), el("dd", null, String(b))); };
+    fact("Name", k.contact_name); fact("Phone", phone(k.phone_e164)); fact("Email", k.email);
+    fact("Email confirmed", confirmed ? "Yes, " + fShort.format(new Date(u.email_confirmed_at)) : "Not yet");
+    fact("Signed up", fShort.format(new Date(u.signed_up_at || k.created_at)) + (u.provider === "google" ? " with Google" : ""));
+    fact("Last signed in", u.last_sign_in_at ? ago(u.last_sign_in_at) : "Never");
+    fact("Approved", k.activated_at ? fShort.format(new Date(k.activated_at)) : "");
+    fact("Using", `${jobs.count || 0} jobs · ${custs.count || 0} customers · ${crew.count || 0} crew`);
+    head.append(dl); host.append(head);
+
+    const sc = el("div", "card"); sc.append(el("div", "title", "Access"));
+    const acts = el("div", "toolbar"); const reasonIn = el("input", "search grow");
+    const decide = async (approve, notify) => {
+      acts.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      const { error } = await sb.schema("admin").rpc("admin_review_signup", { p_contractor: id, p_approve: approve, p_reason: approve ? null : reasonIn.value });
+      if (error) { acts.querySelectorAll("button").forEach((b) => { b.disabled = false; }); return toast(errMsg(error)); }
+      let msg = approve ? "Approved" : "Access turned off";
+      if (notify) { const r = await callMail({ action: "signup_decision", contractor_id: id }); msg += r.ok ? ". " + r.message : ". " + (r.message || "Couldn't email them."); }
+      toast(msg); refreshBadges(); render();
+    };
+    if (k.status === "applied") {
+      if (!confirmed) {
+        sc.append(el("div", "sub", "They haven't confirmed their email yet. You can approve them once they do, or send the confirmation link again."));
+        const again = el("button", "btn", "Send confirmation email again"); again.type = "button";
+        again.addEventListener("click", async () => { again.disabled = true; const r = await callMail({ action: "verify_email", email: k.email }); toast(r.message || (r.ok ? "Sent" : "Couldn't send it")); again.disabled = false; });
+        acts.append(again);
+      } else {
+        sc.append(el("div", "sub", "They confirmed their email. Approve to let them start using the app. They get an email either way."));
+        const ok = el("button", "btn primary", "Approve"); ok.type = "button"; ok.addEventListener("click", () => decide(true, true));
+        acts.append(ok);
+      }
+      reasonIn.placeholder = "Reason for declining (optional, they see this)";
+      const no = el("button", "btn danger", "Decline"); no.type = "button";
+      no.addEventListener("click", () => { if (no.dataset.armed !== "1") { no.dataset.armed = "1"; no.textContent = "Click again to decline"; return; } decide(false, true); });
+      acts.append(reasonIn, no);
+    } else if (k.status === "active" || k.status === "paused") {
+      sc.append(el("div", "sub", "They can use the app. Turning access off signs them out of everything until you turn it back on. No email is sent."));
+      reasonIn.placeholder = "Reason (they see this)";
+      const off = el("button", "btn danger", "Turn off access"); off.type = "button";
+      off.addEventListener("click", () => { if (off.dataset.armed !== "1") { off.dataset.armed = "1"; off.textContent = "Click again to turn off"; return; } decide(false, false); });
+      acts.append(reasonIn, off);
+    } else {
+      sc.append(el("div", "sub", "They can't use the app right now."));
+      const on = el("button", "btn primary", "Approve and email them"); on.type = "button"; on.addEventListener("click", () => decide(true, true));
+      const quiet = el("button", "btn", "Turn access back on"); quiet.type = "button"; quiet.addEventListener("click", () => decide(true, false));
+      if (!confirmed) { on.disabled = true; quiet.disabled = true; sc.append(el("div", "sub", "Their email isn't confirmed yet.")); }
+      acts.append(on, quiet);
+    }
+    sc.append(acts); host.append(sc);
+
+    const ac = el("div", "card"); ac.append(el("div", "title", "Activity"));
+    if (!(log.data || []).length) ac.append(el("div", "sub", "Nothing yet."));
+    (log.data || []).forEach((x) => ac.append(el("div", "sub", `${fWhen(x.created_at)} · ${x.actor} · ${x.action.replace(/^(admin|contractor|pros)\./, "").replace(/_/g, " ")}`)));
+    host.append(ac);
   }
 
   async function renderContractor(id) {
@@ -834,6 +918,7 @@ table.ins td.num { text-align: right; font-variant-numeric: tabular-nums; white-
     if (e0) return fail(host, e0);
     if (!c.data) { host.replaceChildren(el("div", "empty", "Contractor not found.")); return; }
     const k = c.data; host.replaceChildren();
+    if (k.kind === "subscriber") return renderSubscriber(k, host);
 
     const head = el("div", "card");
     const top = el("div", "row"); const g = el("div", "grow");

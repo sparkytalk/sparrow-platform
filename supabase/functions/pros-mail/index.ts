@@ -2,6 +2,10 @@
 // POST { action: "signin", email }                       -> one-time sign-in link (public; only for existing accounts; always answers ok)
 // POST { action: "crew_invite", link }   + owner JWT     -> emails the crew invite the owner just made
 // POST { action: "contractor_invite", link } + admin JWT -> emails a contractor invite / password link
+// POST { action: "verify_email", email }                 -> (re)sends the "confirm your email" link to a new, unconfirmed business (public; always answers ok)
+// POST { action: "signup_ready" } + owner JWT            -> after they confirm, tells Sparrow's admins there's a sign-up to approve (once)
+// POST { action: "signup_decision", contractor_id } + admin JWT -> emails the business that it was approved or declined
+// Links carry a one-time token in the page address (#verify-<type>-<hash>); the app finishes sign-in itself, so no redirect URL setup is needed.
 // POST { action: "doc_email", kind: "quote"|"invoice", job_id, email?, note? } + owner JWT -> emails a business's own quote or invoice to its customer
 // Secrets: SMTP_PASSWORD. Mailbox settings live in admin.settings.smtp.
 // Quotes and invoices can use their own mailbox later (e.g. quote@sparrowlabs.ca): set admin.settings.smtp_docs = {user, host?, port?}
@@ -136,6 +140,14 @@ function tokenFrom(link: string) {
   const m = /^https:\/\/pros\.sparrowlabs\.ca\/#join-([a-f0-9]{64})$/.exec(String(link ?? '').trim())
   return m ? m[1] : null
 }
+// one-time sign-in / confirm link that the app completes itself (verifyOtp), so it works without Supabase redirect URL settings
+async function appLink(email: string) {
+  const { data, error } = await db.auth.admin.generateLink({ type: 'magiclink', email })
+  const p = data?.properties
+  if (error || !p?.hashed_token) throw new Error(error?.message ?? 'link failed')
+  return PROS + 'app/#verify-' + (p.verification_type || 'magiclink') + '-' + p.hashed_token
+}
+const first = (n: unknown) => String(n ?? '').trim().split(' ')[0]
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', timeZone: 'America/Vancouver' })
 
 Deno.serve(async (req) => {
@@ -150,16 +162,83 @@ Deno.serve(async (req) => {
       if (await recent(email, 'signin', 15) >= 3) return json(done)
       const { data: who } = await db.rpc('mail_signin_target', { p_email: email })
       if (!who?.user_id) { await db.schema('admin').from('mail_log').insert({ kind: 'signin', to_email: email, ok: false, error: 'no account' }); return json(done) }
-      const { data: link, error } = await db.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo: PROS + 'app/' } })
-      if (error || !link?.properties?.action_link) throw new Error(error?.message ?? 'link failed')
+      const url = await appLink(email)
       const fail = await send('signin', email, 'Your Sparrow Pros sign-in link', {
         hello: `Hi${who.name ? ' ' + who.name : ''},`,
         lines: ['Tap the button below to sign in to Sparrow Pros. The link works once and expires in 1 hour.'],
-        button: 'Sign in to Sparrow Pros', url: link.properties.action_link,
+        button: 'Sign in to Sparrow Pros', url,
         foot: "If you didn't ask for this, you can ignore this email. Nobody can sign in without the link.",
       }, null)
       if (fail) return json({ ok: false, message: "We couldn't send the email right now. Try again in a few minutes." })
       return json(done)
+    }
+
+    if (body.action === 'verify_email') {
+      const email = String(body.email ?? '').trim().toLowerCase()
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, message: 'Enter a valid email.' })
+      const done = { ok: true, message: `We sent a confirmation link to ${email}. Check your inbox (and spam).` }
+      if (await recent(email, 'verify_email', 15) >= 3) return json({ ok: false, message: 'We already sent a few links. Wait 15 minutes, then try again.' })
+      const { data: uid } = await db.rpc('auth_user_id_by_email', { p_email: email })
+      if (!uid) return json(done)
+      const { data: au } = await db.auth.admin.getUserById(uid)
+      if (!au?.user || au.user.email_confirmed_at) return json({ ok: true, confirmed: true, message: 'Your email is already confirmed. Sign in.' })
+      const { data: c } = await db.from('contractors').select('contact_name').eq('user_id', uid).maybeSingle()
+      const fail = await send('verify_email', email, 'Confirm your email for Sparrow Pros', {
+        hello: `Hi${c?.contact_name ? ' ' + first(c.contact_name) : ''},`,
+        lines: ['Thanks for signing up for Sparrow Pros. Tap the button to confirm this is your email.', "Then we'll review your account and email you as soon as it's ready to use, usually within one business day."],
+        button: 'Confirm my email', url: await appLink(email),
+        foot: "The link works once and expires in 1 hour. If you didn't sign up, you can ignore this email.",
+      }, uid)
+      if (fail) return json({ ok: false, message: "We couldn't send the email right now. Try again in a few minutes." })
+      return json(done)
+    }
+
+    if (body.action === 'signup_ready') {
+      const uc = userClient(req)
+      const { data: u } = await uc.auth.getUser()
+      if (!u?.user) return json({ ok: false }, 401)
+      if (!u.user.email_confirmed_at) return json({ ok: false, message: 'Email not confirmed yet.' })
+      const { data: c } = await db.from('contractors').select('id, business_name, contact_name, phone_e164, email, trade, status, kind').eq('user_id', u.user.id).maybeSingle()
+      if (!c || c.kind !== 'subscriber' || c.status !== 'applied') return json({ ok: true })
+      const { count } = await db.schema('admin').from('mail_log').select('id', { count: 'exact', head: true }).eq('kind', 'signup_notice').eq('actor', u.user.id)
+      if (count) return json({ ok: true })
+      const { data: admins } = await db.schema('admin').from('admins').select('user_id, full_name')
+      for (const a of admins ?? []) {
+        const { data: au } = await db.auth.admin.getUserById(a.user_id)
+        if (!au?.user?.email) continue
+        await send('signup_notice', au.user.email, `New Sparrow Pros sign-up: ${c.business_name}`, {
+          hello: `Hi${a.full_name ? ' ' + first(a.full_name) : ''},`,
+          lines: [`${c.business_name} signed up for Sparrow Pros and confirmed their email.`,
+            [c.contact_name, c.trade, c.phone_e164, c.email].filter(Boolean).join(' · '),
+            'Open the admin dashboard to approve or decline them.'],
+          button: 'Review the sign-up', url: 'https://admin.sparrowlabs.ca/#contractors-' + c.id,
+          foot: 'You get this email because you are a Sparrow admin.',
+        }, u.user.id)
+      }
+      return json({ ok: true })
+    }
+
+    if (body.action === 'signup_decision') {
+      const uc = userClient(req)
+      const { data: isAdmin } = await uc.rpc('is_admin')
+      if (isAdmin !== true) return json({ ok: false, message: 'Admins only.' }, 403)
+      const { data: u } = await uc.auth.getUser()
+      const { data: c } = await db.from('contractors').select('business_name, contact_name, email, status, status_reason, kind').eq('id', body.contractor_id).maybeSingle()
+      if (!c?.email || c.kind !== 'subscriber') return json({ ok: false, message: 'Sign-up not found.' })
+      const ok = c.status === 'active'
+      if (!ok && c.status !== 'suspended') return json({ ok: false, message: 'Nothing to tell them yet.' })
+      const fail = await send(ok ? 'signup_approved' : 'signup_declined', c.email, ok ? `${c.business_name} is ready on Sparrow Pros` : 'About your Sparrow Pros sign-up', ok ? {
+        hello: `Hi${c.contact_name ? ' ' + first(c.contact_name) : ''},`,
+        lines: [`Good news: ${c.business_name} is approved and ready to use Sparrow Pros.`, 'Sign in to add your logo, your first customer and your first job or quote.', 'Want a hand setting up? Write to info@sparrowlabs.ca and we\'ll walk you through it.'],
+        button: 'Open Sparrow Pros', url: PROS + 'app/',
+        foot: 'Sign in with the email and password you signed up with. Forgot it? Tap "Email me a sign-in link instead" on the sign-in page.',
+      } : {
+        hello: `Hi${c.contact_name ? ' ' + first(c.contact_name) : ''},`,
+        lines: [`Thanks for signing up ${c.business_name} for Sparrow Pros. We can't open your account right now.`, ...(c.status_reason ? ['Reason: ' + c.status_reason] : []), 'Questions? Write to info@sparrowlabs.ca.'],
+        button: 'Visit Sparrow Pros', url: PROS,
+        foot: 'Sparrow Labs Inc. · British Columbia',
+      }, u?.user?.id ?? null)
+      return json(fail ? { ok: false, message: "Saved, but we couldn't send their email." } : { ok: true, message: `Emailed ${c.email}` })
     }
 
     if (body.action === 'crew_invite' || body.action === 'contractor_invite') {

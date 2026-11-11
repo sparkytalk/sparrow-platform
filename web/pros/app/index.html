@@ -476,7 +476,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       if (r.ok) sent.textContent = r.message; else err.textContent = r.message || "Couldn't send the email.";
     });
     const help = el("div", "stack"); help.style.marginTop = "22px";
-    const trial = el("a", "btn ghost", "New here? Start a free 14-day trial"); trial.href = "#signup"; trial.style.width = "100%";
+    const trial = el("a", "btn ghost", "New here? Try Sparrow Pros free"); trial.href = "#signup"; trial.style.width = "100%";
     help.append(trial, el("p", "note", "Crew: open the invite link your boss sent you."));
     const card = authPage([el("h1", null, "Sign in"), el("p", "note", "For business owners and their crew."), fields, go, err, magic, sent, help]);
     providers().then((pv) => { if (!pv.google || !document.body.contains(card)) return; const gb = googleButton("Continue with Google"); gb.style.cssText = "width:100%;margin-top:20px"; const o = orLine(); card.insertBefore(gb, fields); card.insertBefore(o, fields); fields.style.marginTop = "0"; });
@@ -484,6 +484,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       e.preventDefault(); err.textContent = ""; go.disabled = true;
       const { error } = await sb.auth.signInWithPassword({ email: em.input.value.trim(), password: pw.input.value });
       go.disabled = false;
+      if (error && /not confirmed/i.test(error.message)) return renderCheckEmail(em.input.value.trim());
       if (error) { err.textContent = error.message === "Invalid login credentials" ? "Wrong email or password." : error.message; return; }
       route();
     });
@@ -525,9 +526,11 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       if (!data.session) return renderLogin(q.get("error_description") ? "That sign-in didn't work: " + q.get("error_description").replace(/\+/g, " ") + ". Try again." : "");
     }
     if (h.startsWith("join-")) return renderJoin(h.slice(5));
+    if (h.startsWith("verify-")) return finishLink(h.slice(7));
     if (h === "signup" && !data.session) return renderSignup();
     if (!data.session) return renderLogin();
     if (recoveryMode) return renderNewPassword();
+    if (!data.session.user.email_confirmed_at) return renderCheckEmail(data.session.user.email, true);
     let pending = null; try { pending = localStorage.getItem("pending_invite"); localStorage.removeItem("pending_invite"); } catch { /* private mode */ }
     if (pending) {
       try {
@@ -542,6 +545,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (who.kind === "crew_off") { await sb.auth.signOut(); return renderLogin("Your crew access is turned off. Ask your boss to turn it back on."); }
     try { await loadMe(); } catch (e) { return renderFatal(friendly(e)); }
     if (!me.ok) { if (await adminElsewhere()) return; return renderSetupBusiness(data.session.user.email); }
+    if (isSub() && !["active", "paused"].includes(me.contractor.status)) return renderWaiting();
     if (h.startsWith("s-")) return renderSection(h.slice(2));
     if (h === "account") return isSub() ? renderSubAccount() : renderAccount();
     if (h === "jobs") return renderJobs();
@@ -1676,6 +1680,45 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     return null;
   }
 
+  // one-time link from an email (confirm email / sign in): #verify-<type>-<hash>
+  async function finishLink(v) {
+    const i = v.indexOf("-"); const type = v.slice(0, i), token_hash = v.slice(i + 1);
+    history.replaceState(null, "", location.pathname);
+    authPage([el("h1", null, "Signing you in…"), el("p", "note", "One moment.")]);
+    await sb.auth.signOut({ scope: "local" }).catch(() => {});
+    const { error } = await sb.auth.verifyOtp({ type: ["signup", "magiclink", "email", "recovery", "invite"].includes(type) ? type : "magiclink", token_hash });
+    if (error) return renderLogin("That link has expired or was already used. Sign in with your password, or tap \"Email me a sign-in link instead\".");
+    mailAuthed({ action: "signup_ready" });
+    route();
+  }
+
+  // after sign-up, or signing in before confirming the email
+  function renderCheckEmail(email, signedIn) {
+    const sent = el("p", "note"); const err = el("div", "err");
+    const again = btn("Send the link again", "ghost", async () => {
+      again.disabled = true; sent.textContent = ""; err.textContent = "";
+      const r = await mailFn({ action: "verify_email", email });
+      again.disabled = false;
+      if (r.ok) sent.textContent = r.confirmed ? r.message : "Sent again. It can take a minute to arrive."; else err.textContent = r.message || "Couldn't send the email.";
+    });
+    again.style.marginTop = "20px";
+    const out = btn(signedIn ? "Sign out" : "Back to sign in", "ghost small", async () => { await sb.auth.signOut(); history.replaceState(null, "", location.pathname); route(); });
+    out.style.marginTop = "10px";
+    authPage([el("h1", null, "Check your email"), el("p", "note", `We sent a link to ${email || "your email"}. Tap it to confirm your email. Not there? Check your spam folder.`),
+      el("p", "note", "After that, we'll review your account and email you when it's ready."), again, sent, err, out]);
+  }
+
+  // signed up, waiting for Sparrow to approve (or declined)
+  function renderWaiting() {
+    const c = me.contractor; const declined = c.status === "suspended" || c.status === "left";
+    const out = btn("Sign out", "ghost small", signOut); out.style.marginTop = "20px";
+    const facts = el("dl", "kv"); facts.style.marginTop = "18px";
+    [["Business", c.business_name], ["Name", c.contact_name], ["Phone", prettyPhone(c.phone)], ["Email", c.email]].forEach(([k, v]) => { if (v) facts.append(el("dt", null, k), el("dd", null, v)); });
+    if (declined) return authPage([el("h1", null, "We can't open your account"), el("p", "note", c.status_reason || "Sparrow Pros isn't available for your business right now."), el("p", "note", "Questions? Write to info@sparrowlabs.ca."), out]);
+    authPage([el("h1", null, "Thanks, you're on the list"), el("p", "note", "Your email is confirmed. We're reviewing your account now and will email you as soon as it's ready, usually within one business day."),
+      facts, el("p", "note", "Want help getting set up? Write to info@sparrowlabs.ca and we'll walk you through it."), out]);
+  }
+
   // sign-up (new business, email + password)
   function renderSignup() {
     const f = { business_name: field("Business name", "", { autocomplete: "organization" }), contact_name: field("Your name", "", { autocomplete: "name" }),
@@ -1683,10 +1726,10 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       password: field("Password (at least 10 characters)", "", { type: "password", autocomplete: "new-password" }) };
     const trade = tradeSelect("");
     const fields = el("div", "stack"); fields.style.margin = "20px 0 16px"; fields.append(f.business_name, f.contact_name, trade, f.phone, f.email, f.password);
-    const err = el("div", "err"); const go = el("button", "btn", "Start my free trial"); go.type = "submit";
-    const fine = el("p", "note", "14 days free. No card needed. Then from $15.99/month. Cancel anytime."); fine.style.marginTop = "12px";
+    const err = el("div", "err"); const go = el("button", "btn", "Create my account"); go.type = "submit";
+    const fine = el("p", "note", "Free to try. No card needed. We'll confirm your email, then approve your account, usually within one business day."); fine.style.marginTop = "12px";
     const have = el("p", "note"); have.style.marginTop = "14px"; const a = el("a", null, "Sign in"); a.href = "#"; have.append("Already have an account? ", a);
-    const card = authPage([el("h1", null, "Start your free trial"), el("p", "note", "Jobs, quotes, invoices and your crew in one simple app."), fields, go, err, fine, have]);
+    const card = authPage([el("h1", null, "Try Sparrow Pros free"), el("p", "note", "Jobs, quotes, invoices and your crew in one simple app."), fields, go, err, fine, have]);
     providers().then((pv) => { if (!pv.google || !document.body.contains(card)) return; const gb = googleButton("Sign up with Google"); gb.style.cssText = "width:100%;margin-top:20px"; card.insertBefore(gb, fields); card.insertBefore(orLine(), fields); fields.style.marginTop = "0"; });
     card.addEventListener("submit", async (e) => {
       e.preventDefault(); err.textContent = "";
@@ -1698,10 +1741,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
         const r = await fetch(SUPABASE_URL + "/functions/v1/pros-signup", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY }, body: JSON.stringify(body) });
         const res = await r.json().catch(() => ({ ok: false, message: "Couldn't reach Sparrow. Try again." }));
         if (!res.ok) throw new Error(res.message || "Couldn't create your account.");
-        const { error } = await sb.auth.signInWithPassword({ email: body.email, password: body.password });
-        if (error) throw error;
-        history.replaceState(null, "", location.pathname); toast("Welcome to Sparrow Pros"); route();
-      } catch (ex) { err.textContent = friendly(ex); go.disabled = false; go.textContent = "Start my free trial"; }
+        await mailFn({ action: "verify_email", email: body.email });
+        history.replaceState(null, "", location.pathname); renderCheckEmail(body.email);
+      } catch (ex) { err.textContent = friendly(ex); go.disabled = false; go.textContent = "Create my account"; }
     });
   }
 
@@ -1711,12 +1753,12 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       phone: field("Mobile phone", "", { type: "tel", autocomplete: "tel", inputmode: "tel" }) };
     const trade = tradeSelect("");
     const fields = el("div", "stack"); fields.style.margin = "20px 0 16px"; fields.append(f.business_name, f.contact_name, trade, f.phone);
-    const err = el("div", "err"); const go = el("button", "btn", "Start my free trial"); go.type = "submit";
+    const err = el("div", "err"); const go = el("button", "btn", "Send my request"); go.type = "submit";
     const other = btn("Use a different account", "ghost small", signOut); other.style.marginTop = "14px";
-    const card = authPage([el("h1", null, "Set up your business"), el("p", "note", `Signed in as ${email || "you"}. 14 days free, no card needed. Crew member? Open the invite link from your boss instead.`), fields, go, err, other]);
+    const card = authPage([el("h1", null, "Set up your business"), el("p", "note", `Signed in as ${email || "you"}. Free to try, no card needed. We'll approve your account, usually within one business day. Crew member? Open the invite link from your boss instead.`), fields, go, err, other]);
     card.addEventListener("submit", async (e) => {
       e.preventDefault(); err.textContent = ""; go.disabled = true;
-      try { me = await rpc("pros_signup", { p: { business_name: f.business_name.input.value, contact_name: f.contact_name.input.value, phone: f.phone.input.value, trade: trade.input.value } }); toast("Welcome to Sparrow Pros"); location.hash = ""; route(); }
+      try { me = await rpc("pros_signup", { p: { business_name: f.business_name.input.value, contact_name: f.contact_name.input.value, phone: f.phone.input.value, trade: trade.input.value } }); mailAuthed({ action: "signup_ready" }); location.hash = ""; route(); }
       catch (ex) { err.textContent = friendly(ex); go.disabled = false; }
     });
   }
@@ -1926,6 +1968,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const status = c.billing_status === "trialing" ? (left > 0 ? `Free trial, ${left} day${left === 1 ? "" : "s"} left.` : "Your free trial has ended.")
       : c.billing_status === "active" ? `${c.crew_addon ? "Solo + Crew" : "Solo"} plan.` + (c.current_period_end ? ` Renews ${new Date(c.current_period_end).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}.` : "")
       : c.billing_status === "past_due" ? "Your last payment didn't go through." : c.billing_status === "comped" ? "Free plan from Sparrow." : "No plan yet.";
+    if (c.billing_status === "comped") {
+      plan.append(el("p", null, "Free early access."), el("p", "muted small", "No card needed. We'll tell you well ahead of time before any paid plans start, and you choose whether to stay."));
+    } else {
     plan.append(el("p", null, status));
     const prices = el("div", "grid2");
     const pcard = (name, price, text) => { const d = el("div", "card"); d.style.padding = "14px"; d.append(el("b", null, name), el("div", "big", price), el("p", "muted small", text)); return d; };
@@ -1934,6 +1979,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const billWrap = el("div"); billWrap.id = "billing-actions"; plan.append(billWrap);
     if (typeof drawBilling === "function") drawBilling(billWrap);
     else billWrap.append(el("p", "small", "Online payment is being set up. Your trial keeps running in the meantime."));
+    }
 
     const biz = { business_name: field("Business name", c.business_name), contact_name: field("Your name", c.contact_name), phone: field("Phone", prettyPhone(c.phone), { type: "tel" }),
       address_line: field("Business address (optional)", c.address_line), city: field("City", c.city), postal_code: field("Postal code", c.postal_code), gst_number: field("GST number (if registered)", c.gst_number) };
