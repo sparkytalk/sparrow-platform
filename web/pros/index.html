@@ -33,7 +33,8 @@ p { margin: 0; }
 .field textarea { min-height: 96px; resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); background: var(--bg); outline: none; }
 .field input[readonly] { opacity: .7; }
-.card .field input, .card .field select, .card .field textarea, .job .field input, .job .field textarea, .modal .field input { background: var(--bg); }
+.card .field input, .card .field select, .card .field textarea, .job .field input, .job .field textarea { background: var(--bg); }
+.modal .field input, .modal .field select, .modal .field textarea, .modal .money { background: var(--soft); }
 .grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .err { color: var(--danger); font-size: 14px; min-height: 1.2em; }
 .ok { color: var(--ok); font-size: 14px; }
@@ -78,7 +79,7 @@ p { margin: 0; }
 .price-row:first-of-type { border-top: 0; }
 .price-row .lbl { min-width: 0; } .price-row .lbl small { display: block; color: var(--muted); font-size: 13px; }
 .money { display: flex; align-items: center; background: var(--soft); border-radius: 12px; padding: 0 10px; border: 1px solid transparent; }
-.card .money, .job .money, .modal .money { background: var(--bg); }
+.card .money, .job .money { background: var(--bg); }
 .money span { color: var(--muted); } .money input { border: 0; background: transparent; padding: 10px 6px; width: 100%; font-size: 16px; color: var(--ink); text-align: right; min-width: 0; }
 .money input:focus { outline: none; } .money:focus-within { border-color: var(--ink); }
 .tpl { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #e4e4e7; flex-wrap: wrap; }
@@ -286,6 +287,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     package: '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
     chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    contact: '<path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/>',
     bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
   };
   function icon(name, size = 20, stroke = 1.75) {
@@ -303,9 +305,13 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
   const todayLong = () => new Date().toLocaleDateString("en-CA", { weekday: "long", month: "short", day: "numeric", timeZone: "America/Vancouver" });
   async function signOut() { await sb.auth.signOut(); history.replaceState(null, "", location.pathname); route(); }
 
-  const OWNER_NAV = [
+  const NAV = () => (me && me.contractor && me.contractor.kind === "subscriber") ? [
+    { h: "", label: "Home", icon: "house" }, { h: "jobs", label: "Jobs", icon: "briefcase" }, { h: "customers", label: "Customers", icon: "contact" }, { h: "schedule", label: "Schedule", icon: "calendar" },
+    { h: "messages", label: "Messages", icon: "chat" }, { h: "updates", label: "Updates", icon: "bell" }, { h: "team", label: "Crew", icon: "users" }, { h: "timesheets", label: "Timesheets", icon: "timer" },
+    { h: "calendar", label: "Calendar", icon: "clock" }, { h: "inventory", label: "Inventory", icon: "package" }, { h: "account", label: "Settings", icon: "settings" },
+  ] : [
     { h: "", label: "Home", icon: "house" }, { h: "jobs", label: "Jobs", icon: "briefcase" }, { h: "schedule", label: "Schedule", icon: "calendar" },
-    { h: "messages", label: "Messages", icon: "chat" }, { h: "assistant", label: "Assistant", icon: "sparkles" }, { h: "updates", label: "Updates", icon: "bell" }, { h: "team", label: "Crew", icon: "users" }, { h: "timesheets", label: "Timesheets", icon: "timer" },
+    { h: "messages", label: "Messages", icon: "chat" }, { h: "updates", label: "Updates", icon: "bell" }, { h: "team", label: "Crew", icon: "users" }, { h: "timesheets", label: "Timesheets", icon: "timer" },
     { h: "calendar", label: "Availability", icon: "clock" }, { h: "inventory", label: "Inventory", icon: "package" }, { h: "prices", label: "Prices", icon: "list" }, { h: "account", label: "Account", icon: "settings" },
   ];
   const navKey = () => { const c = location.hash.slice(1); if (c.startsWith("quote-") || c.startsWith("job-")) return "jobs"; if (c.startsWith("s-")) return "account"; if (c.startsWith("messages-")) return "messages"; return c; };
@@ -317,7 +323,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const side = el("nav", "side"); side.setAttribute("aria-label", "Main");
     side.append(wordmark((me && me.contractor && (me.contractor.business_name)) || "Pros"));
     const link = (n, size) => { const a = el("a", (cur === n.h ? "active" : "") + (n.h === "messages" && ownerUnreadN > 0 ? " has-dot" : "")); a.href = "#" + n.h; a.dataset.nav = n.h; a.append(icon(n.icon, size)); return a; };
-    OWNER_NAV.forEach((n) => { const a = link(n, 19); a.append(n.label); side.append(a); });
+    NAV().forEach((n) => { const a = link(n, 19); a.append(n.label); side.append(a); });
     const bottom = el("div", "bottom");
     bottom.append(el("div", "note", (me && me.contractor && me.contractor.contact_name) || ""));
     const so = el("button", "round-btn"); so.type = "button"; so.setAttribute("aria-label", "Sign out"); so.title = "Sign out"; so.append(icon("logOut", 18)); so.addEventListener("click", signOut);
@@ -325,12 +331,12 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const mtop = el("div", "mtop"); mtop.append(wordmark((me && me.contractor && me.contractor.business_name) || "Pros"));
     const main = el("main", "main"); main.append(...content);
     const mnav = el("nav", "mnav"); mnav.setAttribute("aria-label", "Main");
-    OWNER_NAV.slice(0, 4).forEach((n) => { const a = link(n, 21); a.setAttribute("aria-label", n.label); a.append(el("span", null, n.label)); mnav.append(a); });
+    NAV().slice(0, 4).forEach((n) => { const a = link(n, 21); a.setAttribute("aria-label", n.label); a.append(el("span", null, n.label)); mnav.append(a); });
     const more = el("button"); more.type = "button"; more.setAttribute("aria-label", "More"); more.append(icon("more", 22));
     more.addEventListener("click", () => {
       const back = el("div", "sheet-back"); const sheet = el("div", "sheet"); sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", "More");
       sheet.append(el("div", "grab"));
-      OWNER_NAV.slice(4).forEach((n) => { const a = el("a"); a.href = "#" + n.h; a.dataset.nav = n.h; a.append(icon(n.icon, 21), n.label); a.addEventListener("click", () => back.remove()); sheet.append(a); });
+      NAV().slice(4).forEach((n) => { const a = el("a"); a.href = "#" + n.h; a.dataset.nav = n.h; a.append(icon(n.icon, 21), n.label); a.addEventListener("click", () => back.remove()); sheet.append(a); });
       const s = el("button", "item"); s.type = "button"; s.append(icon("logOut", 21), "Sign out"); s.addEventListener("click", () => { back.remove(); signOut(); }); sheet.append(s);
       back.addEventListener("mousedown", (e) => { if (e.target === back) back.remove(); });
       back.append(sheet); document.body.append(back);
@@ -445,7 +451,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       magic.disabled = true; const r = await mailFn({ action: "signin", email: v }); magic.disabled = false;
       if (r.ok) sent.textContent = r.message; else err.textContent = r.message || "Couldn't send the email.";
     });
-    const help = el("p", "note", "New here? Business owners: ask Sparrow at info@sparrowlabs.ca. Crew: ask your boss for an invite."); help.style.marginTop = "18px";
+    const help = el("div", "stack"); help.style.marginTop = "22px";
+    const trial = el("a", "btn ghost", "New here? Start a free 14-day trial"); trial.href = "#signup"; trial.style.width = "100%";
+    help.append(trial, el("p", "note", "Crew: open the invite link your boss sent you."));
     const card = authPage([el("h1", null, "Sign in"), el("p", "note", "For business owners and their crew."), fields, go, err, magic, sent, help]);
     providers().then((pv) => { if (!pv.google || !document.body.contains(card)) return; const gb = googleButton("Continue with Google"); gb.style.cssText = "width:100%;margin-top:20px"; const o = orLine(); card.insertBefore(gb, fields); card.insertBefore(o, fields); fields.style.marginTop = "0"; });
     card.addEventListener("submit", async (e) => {
@@ -493,6 +501,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       if (!data.session) return renderLogin(q.get("error_description") ? "That sign-in didn't work: " + q.get("error_description").replace(/\+/g, " ") + ". Try again." : "");
     }
     if (h.startsWith("join-")) return renderJoin(h.slice(5));
+    if (h === "signup" && !data.session) return renderSignup();
     if (!data.session) return renderLogin();
     if (recoveryMode) return renderNewPassword();
     let pending = null; try { pending = localStorage.getItem("pending_invite"); localStorage.removeItem("pending_invite"); } catch { /* private mode */ }
@@ -508,13 +517,14 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (who.kind === "crew") return routeCrew(h);
     if (who.kind === "crew_off") { await sb.auth.signOut(); return renderLogin("Your crew access is turned off. Ask your boss to turn it back on."); }
     try { await loadMe(); } catch (e) { return renderFatal(friendly(e)); }
-    if (!me.ok) { if (await adminElsewhere()) return; await sb.auth.signOut(); return renderLogin("No Sparrow Pros account uses this login. If you were invited, open your invite link and choose how to sign in there."); }
+    if (!me.ok) { if (await adminElsewhere()) return; return renderSetupBusiness(data.session.user.email); }
     if (h.startsWith("s-")) return renderSection(h.slice(2));
-    if (h === "account") return renderAccount();
+    if (h === "account") return isSub() ? renderSubAccount() : renderAccount();
     if (h === "jobs") return renderJobs();
     if (h.startsWith("quote-")) return renderQuote(h.slice(6));
     if (h.startsWith("job-")) return renderJobDay(h.slice(4));
-    if (h === "prices") return renderPrices();
+    if (h === "prices" && !isSub()) return renderPrices();
+    if (h === "customers") return renderCustomers();
     if (h === "calendar") return renderCalendar();
     if ((CREW_TOOL_TITLES[h] || h.startsWith("messages")) && !canGetJobs()) return renderNotActive(h);
     if (h === "team") return renderTeam();
@@ -522,7 +532,6 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (h === "timesheets") return renderTimesheets();
     if (h === "updates") return renderUpdates();
     if (h === "inventory") return renderInventory();
-    if (h === "assistant") { renderOwnerAssistant(); refreshOwnerUnread(); return; }
     if (h === "messages" || h.startsWith("messages-")) return renderMessages(h.slice(9));
     refreshOwnerUnread();
     if (h === "") return renderOwnerHome();
@@ -795,7 +804,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
   let jobView = "open";
 
   async function renderJobs() {
-    const head = [el("h2", null, "Jobs"), el("p", "muted", "Jobs Sparrow has sent you. Contact the customer to set the exact time.")];
+    const head = isSub() ? [jobsHead()] : [el("h2", null, "Jobs"), el("p", "muted", "Jobs Sparrow has sent you. Contact the customer to set the exact time.")];
     if (!canGetJobs()) {
       const b = el("div", "banner info"); b.append(el("h3", null, "Sparrow jobs start once you're active"), el("p", "small", "Finish setting up your account and Sparrow will review it."));
       return shell([...head, b]);
@@ -814,10 +823,10 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       const b = btn(label, jobView === k ? "on" : "", () => { jobView = k; drawJobs(jobs, head); }); b.className = jobView === k ? "on" : ""; seg.append(b);
     });
     const parts = [...head];
-    if (me.contractor.status !== "active") { const b = el("div", "banner crit"); b.append(el("p", "small", "Sparrow isn't sending you new jobs right now. " + (me.contractor.status_reason || ""))); parts.push(b); }
+    if (!isSub() && me.contractor.status !== "active") { const b = el("div", "banner crit"); b.append(el("p", "small", "Sparrow isn't sending you new jobs right now. " + (me.contractor.status_reason || ""))); parts.push(b); }
     parts.push(seg);
     const list = jobView === "open" ? open : past;
-    if (!list.length) parts.push(el("div", "card empty", jobView === "open" ? "No open jobs yet. New Sparrow bookings show up here." : "No past jobs yet."));
+    if (!list.length) parts.push(el("div", "card empty", jobView === "open" ? (isSub() ? "No open jobs. Tap New job to add your first one." : "No open jobs yet. New Sparrow bookings show up here.") : "No past jobs yet."));
     list.forEach((j) => parts.push(jobCard(j, jobs, head)));
     shell(parts);
   }
@@ -832,7 +841,8 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const kv = el("dl", "kv");
     const add = (k, v) => { if (v == null || v === "") return; kv.append(el("dt", null, k)); const dd = el("dd"); if (v instanceof Node) dd.append(v); else dd.textContent = v; kv.append(dd); };
     add("Customer", j.customer_name + (j.customer_company ? " (" + j.customer_company + ")" : ""));
-    if (j.customer_phone) {
+    if (j.customer_phone && isSub()) add("Phone", phoneLink(j.customer_phone));
+    else if (j.customer_phone) {
       const phone = String(j.customer_phone).replace(/\D/g, "");
       const a = el("a", null, "+" + phone); a.href = "https://wa.me/" + phone; a.target = "_blank"; a.rel = "noopener";
       add("WhatsApp", a);
@@ -866,7 +876,17 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     else if (["completed", "closed", "disputed"].includes(j.status)) qr.append(btn(j.invoice ? "Invoice and photos" : "Job details", "small", () => { location.hash = "job-" + j.id; }));
     if (isBooked) qr.append(btn("Ask for new dates", "small", () => datesPanel(j, panel)));
     if (qr.children.length) card.append(qr, panel);
-    if (["requested", "quote_visit", "quoted", "booked", "offered", "assigned"].includes(j.status)) {
+    if (j.own && !["completed", "closed", "cancelled", "disputed"].includes(j.status)) {
+      const row = el("div", "row");
+      if (j.status !== "in_progress") row.append(btn("Edit job", "small", () => jobForm(j)));
+      if (j.status !== "in_progress") row.append(btn("Cancel job", "small ghost", () => {
+        row.replaceChildren();
+        const reason = field("Why is it cancelled? (optional)", "", {}); const err = el("div", "err");
+        const go = btn("Yes, cancel this job", "small primary", async () => { go.disabled = true; try { await rpc("pros_job_cancel", { p_job: j.id, p_reason: reason.input.value || null }); toast("Job cancelled"); renderJobs(); } catch (e) { err.textContent = friendly(e); go.disabled = false; } });
+        const box = el("div", "card"); box.style.padding = "12px"; const r2 = el("div", "row"); r2.append(go, btn("Keep it", "small", () => drawJobs(jobs, head))); box.append(reason, r2, err); row.append(box);
+      }));
+      if (row.children.length) card.append(row);
+    } else if (!j.own && ["requested", "quote_visit", "quoted", "booked", "offered", "assigned"].includes(j.status)) {
       const row = el("div", "row");
       const rel = btn("Can't take this job", "small", () => {
         row.replaceChildren();
@@ -1299,7 +1319,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
         const bad = lines.find((l) => l.description && (l.unit_price_cents == null || !(Number(l.quantity) > 0)));
         if (bad) return (err.textContent = `Check the quantity and rate for "${bad.description}".`);
         if (sending && !lines.some((l) => l.description)) return (err.textContent = "Add at least one line item.");
-        if (sending && !dates.length) return (err.textContent = "Offer at least one date.");
+        if (sending && !dates.length && !isSub()) return (err.textContent = "Offer at least one date.");
         save.disabled = send.disabled = true;
         try {
           const res = await rpc("contractor_quote_save", { p: { job_id: job.id, send: sending, notes: notes.input.value,
@@ -1325,11 +1345,10 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     });
     lb.append(code, copy); box.append(lb);
     const row = el("div", "row");
-    if (job.customer_phone) {
+    {
       const first = (job.customer_name || "").split(" ")[0];
-      const msg = `Hi ${first}, here's your quote ${q.ref} from ${(me.contractor && (me.contractor.invoice_display_name || me.contractor.business_name)) || "us"} for ${job.service}: ${q.link}`;
-      const wa = el("a", "btn small primary", "Send on WhatsApp"); wa.href = "https://wa.me/" + String(job.customer_phone).replace(/\D/g, "") + "?text=" + encodeURIComponent(msg); wa.target = "_blank"; wa.rel = "noopener";
-      row.append(wa);
+      const msg = `Hi ${first}, here's your quote ${q.ref} from ${bizName()} for ${job.service}: ${q.link}`;
+      row.append(...shareButtons(job.customer_phone, job.customer_email, msg, `Quote ${q.ref} from ${bizName()}`));
     }
     const open = el("a", "btn small", "Open quote"); open.href = q.link; open.target = "_blank"; open.rel = "noopener";
     row.append(open);
@@ -1373,7 +1392,8 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const kv = el("dl", "kv");
     const add = (k, v) => { if (v == null || v === "") return; kv.append(el("dt", null, k)); const dd = el("dd"); if (v instanceof Node) dd.append(v); else dd.textContent = v; kv.append(dd); };
     add("Customer", j.customer_name + (j.customer_company ? " (" + j.customer_company + ")" : ""));
-    if (j.customer_phone) { const ph = String(j.customer_phone).replace(/\D/g, ""); const a = el("a", null, "+" + ph); a.href = "https://wa.me/" + ph; a.target = "_blank"; a.rel = "noopener"; add("WhatsApp", a); }
+    if (j.customer_phone && isSub()) add("Phone", phoneLink(j.customer_phone));
+    else if (j.customer_phone) { const ph = String(j.customer_phone).replace(/\D/g, ""); const a = el("a", null, "+" + ph); a.href = "https://wa.me/" + ph; a.target = "_blank"; a.rel = "noopener"; add("WhatsApp", a); }
     const addr = [j.unit ? j.unit + "-" + j.address_line : j.address_line, j.city, j.postal_code].filter(Boolean).join(", ");
     if (addr) { const a = el("a", null, addr); a.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr); a.target = "_blank"; a.rel = "noopener"; add("Address", a); }
     add("When", when(j)); add("Access", j.access); add("Notes", j.notes);
@@ -1387,7 +1407,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     s1.append(h1);
     if (started) s1.append(el("p", "muted small", j.started_at ? "Started " + whenTime(j.started_at) : "Started."));
     else {
-      s1.append(el("p", "muted small", "Tap this when you arrive. Sparrow sees the job is under way."));
+      s1.append(el("p", "muted small", isSub() ? "Tap this when you arrive so your crew and records show the job is under way." : "Tap this when you arrive. Sparrow sees the job is under way."));
       const err1 = el("div", "err");
       const go = btn("Start job", "primary", async () => { go.disabled = true; try { drawJobDay(await rpc("contractor_start_job", { p_job: j.id }), back); toast("Job started"); } catch (e) { err1.textContent = friendly(e); go.disabled = false; } });
       const r = el("div", "row"); r.append(go); s1.append(r, err1);
@@ -1395,8 +1415,9 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
 
     // step 2: photos
     const s2 = el("section", "card");
-    const h2 = el("div", "stephead"); h2.append(el("span", "stepnum" + (afters >= 2 ? " done" : ""), afters >= 2 ? "✓" : "2"), el("h3", null, "Photos"));
-    s2.append(h2, el("p", "muted small", "Before photos are optional. Add at least 2 after photos: they protect you if the customer has a question later."));
+    const photosDone = isSub() ? d.photos.length > 0 : afters >= 2;
+    const h2 = el("div", "stephead"); h2.append(el("span", "stepnum" + (photosDone ? " done" : ""), photosDone ? "✓" : "2"), el("h3", null, "Photos"));
+    s2.append(h2, el("p", "muted small", isSub() ? "Optional, but handy: before and after photos help if a customer has a question later." : "Before photos are optional. Add at least 2 after photos: they protect you if the customer has a question later."));
     const locked = !!inv;
     const photoErr = el("div", "err");
     const urls = {};
@@ -1455,7 +1476,13 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     if (inv) {
       const st = el("div", "banner " + (inv.status === "paid" ? "good" : "info"));
       st.append(el("p", null, inv.status === "paid" ? `Paid${inv.paid_by === "cash" ? " in cash" : ""}. Total ${fmt(inv.total_cents)} incl. GST.` : `${fmt(inv.due_cents)} due. Total ${fmt(inv.total_cents)} incl. GST${inv.deposit_cents ? `, deposit ${fmt(inv.deposit_cents)} already paid` : ""}.`));
-      if (inv.status !== "paid") st.append(el("p", "small", "The customer pays Sparrow from the invoice link. Your share is paid out to you once it arrives."));
+      if (inv.status !== "paid" && isSub()) {
+        st.append(el("p", "small", "The customer pays you using the details on the invoice. Mark it paid when the money arrives."));
+        const pr = el("div", "row"); const sel = el("select"); sel.setAttribute("aria-label", "How they paid");
+        [["etransfer", "e-Transfer"], ["cash", "Cash"], ["cheque", "Cheque"], ["card", "Card"], ["other", "Other"]].forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); });
+        const mb = btn("Mark as paid", "small primary", async () => { mb.disabled = true; try { await rpc("pros_invoice_paid", { p_job: j.id, p_method: sel.value }); toast("Marked as paid"); renderJobDay(j.id); } catch (e) { toast(friendly(e)); mb.disabled = false; } });
+        pr.append(sel, mb); st.append(pr);
+      } else if (inv.status !== "paid") st.append(el("p", "small", "The customer pays Sparrow from the invoice link. Your share is paid out to you once it arrives."));
       s3.append(st);
       const t = el("div", "tot");
       inv.lines.forEach((l) => t.append(el("div", "small", `${l.description}${Number(l.quantity) !== 1 ? " × " + Number(l.quantity) : ""}${l.is_extra ? " (extra)" : ""}`), el("div", "small", fmt(l.amount_cents))));
@@ -1488,7 +1515,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       if (d.agreed_cents && sub > d.agreed_cents) {
         const pct = Math.round((sub - d.agreed_cents) * 100 / d.agreed_cents);
         const b = el("div", "banner " + (pct > rules.extras_ok_pct ? "warn" : "info"));
-        b.append(el("p", "small", `This is ${fmt(sub - d.agreed_cents)} (${pct}%) more than the agreed ${fmt(d.agreed_cents)}.` + (pct > rules.extras_ok_pct ? ` Make sure the customer agreed to the extra work. Sparrow checks invoices more than ${rules.extras_ok_pct}% over.` : "")));
+        b.append(el("p", "small", `This is ${fmt(sub - d.agreed_cents)} (${pct}%) more than the agreed ${fmt(d.agreed_cents)}.` + (pct > rules.extras_ok_pct ? ` Make sure the customer agreed to the extra work.${isSub() ? "" : ` Sparrow checks invoices more than ${rules.extras_ok_pct}% over.`}` : "")));
         warn.append(b);
       }
       if (cashAmt && !cashAmt.dataset.touched) cashAmt.input.value = String(due / 100);
@@ -1518,15 +1545,15 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const pay = el("fieldset", "paychoice"); pay.style.cssText = "border:0;padding:0;margin:0";
     pay.append(el("legend", "small muted", "How is the customer paying?"));
     const mk = (val, text, checked) => { const l = el("label", "check"); const r = el("input"); r.type = "radio"; r.name = "pay"; r.value = val; r.checked = checked; l.append(r, text); pay.append(l); return r; };
-    const rSparrow = mk("sparrow", "They pay Sparrow from the invoice link (card or Interac)", true);
+    const rSparrow = mk("sparrow", isSub() ? "They'll pay me using the invoice details (e-Transfer, cheque…)" : "They pay Sparrow from the invoice link (card or Interac)", true);
     const rCash = mk("cash", "They paid me cash", false);
     const cashAmt = moneyInput(null, "0"); cashAmt.input.setAttribute("aria-label", "Cash collected"); cashAmt.input.addEventListener("input", () => { cashAmt.dataset.touched = "1"; });
     const cashBox = el("label", "field"); cashBox.append("Cash collected", cashAmt); cashBox.hidden = true;
     const cashNote = el("p", "muted small", "Sparrow's 10% on cash jobs is added to your balance and taken from your next payout."); cashNote.hidden = true;
-    [rSparrow, rCash].forEach((r) => r.addEventListener("change", () => { cashBox.hidden = cashNote.hidden = !rCash.checked; }));
+    [rSparrow, rCash].forEach((r) => r.addEventListener("change", () => { cashBox.hidden = !rCash.checked; cashNote.hidden = isSub() || !rCash.checked; }));
     pay.append(cashBox, cashNote);
 
-    const afters = d.photos.filter((p) => p.kind === "after").length;
+    const afters = isSub() ? 99 : d.photos.filter((p) => p.kind === "after").length;
     const err = el("div", "err");
     const go = btn("Finish job and send invoice", "primary", async () => {
       err.textContent = "";
@@ -1559,16 +1586,238 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     });
     lb.append(code, copy); box.append(lb);
     const row = el("div", "row");
-    if (j.customer_phone) {
+    {
       const first = (j.customer_name || "").split(" ")[0];
-      const biz = (me.contractor && (me.contractor.invoice_display_name || me.contractor.business_name)) || "us";
+      const biz = bizName();
       const msg = inv.status === "paid" ? `Hi ${first}, thanks for choosing ${biz}. Here's your receipt ${inv.number}: ${inv.link}` : `Hi ${first}, thanks for choosing ${biz}. Here's your invoice ${inv.number} for ${j.service}: ${inv.link}`;
-      const wa = el("a", "btn small primary", "Send on WhatsApp"); wa.href = "https://wa.me/" + String(j.customer_phone).replace(/\D/g, "") + "?text=" + encodeURIComponent(msg); wa.target = "_blank"; wa.rel = "noopener";
-      row.append(wa);
+      row.append(...shareButtons(j.customer_phone, j.customer_email, msg, (inv.status === "paid" ? "Receipt " : "Invoice ") + inv.number + " from " + biz));
     }
     const open = el("a", "btn small", "Open invoice"); open.href = inv.link; open.target = "_blank"; open.rel = "noopener";
     row.append(open); box.append(row);
     return box;
+  }
+
+  // ---------- Sparrow Pros subscription: sign-up, customers, own jobs, settings ----------
+  const isSub = () => !!(me && me.contractor && me.contractor.kind === "subscriber");
+  const bizName = () => (me && me.contractor && (me.contractor.invoice_display_name || me.contractor.business_name)) || "us";
+  const digitsOf = (p) => String(p || "").replace(/\D/g, "");
+  const intlDigits = (p) => { const d = digitsOf(p); return d.length === 10 ? "1" + d : d; };
+  const prettyPhone = (p) => { const d = digitsOf(p).replace(/^1(?=\d{10}$)/, ""); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
+  function phoneLink(p) { const a = el("a", null, prettyPhone(p)); a.href = "tel:+" + intlDigits(p); return a; }
+  function shareButtons(phone, email, msg, subject) {
+    const out = [];
+    const mk = (label, href, primary) => { const a = el("a", "btn small" + (primary ? " primary" : ""), label); a.href = href; if (/^https/.test(href)) { a.target = "_blank"; a.rel = "noopener"; } return a; };
+    if (isSub()) {
+      if (phone) out.push(mk("Send by text", "sms:+" + intlDigits(phone) + "?&body=" + encodeURIComponent(msg), true));
+      if (email) out.push(mk("Send by email", "mailto:" + email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg), !phone));
+      if (phone) out.push(mk("WhatsApp", "https://wa.me/" + intlDigits(phone) + "?text=" + encodeURIComponent(msg)));
+    } else if (phone) out.push(mk("Send on WhatsApp", "https://wa.me/" + digitsOf(phone) + "?text=" + encodeURIComponent(msg), true));
+    return out;
+  }
+  const TRADES = ["General contracting", "Renovation", "Carpentry", "Fencing and decks", "Landscaping", "Painting", "Plumbing", "Electrical", "HVAC", "Roofing", "Concrete", "Flooring", "Drywall", "Cleaning", "Handyman", "Other"];
+  function selectField(label, options, value) {
+    const l = el("label", "field"); l.append(label); const s = el("select");
+    options.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; s.append(o); }); s.value = value || ""; l.append(s); l.input = s; return l;
+  }
+  const tradeSelect = (v) => selectField("Your trade", [["", "Pick one"], ...TRADES.map((t) => [t, t])], v);
+  const trialDaysLeft = () => { const c = me.contractor; if (c.billing_status !== "trialing" || !c.trial_ends_at) return null; return Math.max(0, Math.ceil((new Date(c.trial_ends_at) - Date.now()) / 864e5)); };
+  function planBanner() {
+    const c = me.contractor; const left = trialDaysLeft();
+    const mk = (cls, title, text, label) => { const b = el("div", "banner " + cls); b.append(el("h3", null, title), el("p", "small", text)); const r = el("div", "row"); r.append(btn(label, "small primary", () => { location.hash = "account"; })); b.append(r); return b; };
+    if (left != null) return mk(left > 3 ? "info" : "warn", left > 0 ? `Free trial: ${left} day${left === 1 ? "" : "s"} left` : "Your free trial has ended", "Solo $15.99/month. Add your crew for $11.99/month (up to 10 people). Prices before GST and PST.", "Choose a plan");
+    if (c.billing_status === "past_due") return mk("crit", "Your last payment didn't go through", "Update your card to keep using Sparrow Pros.", "Update payment");
+    if (c.billing_status === "canceled") return mk("crit", "Your plan has ended", "Choose a plan to keep using Sparrow Pros. Your jobs and customers are still here.", "Choose a plan");
+    return null;
+  }
+
+  // sign-up (new business, email + password)
+  function renderSignup() {
+    const f = { business_name: field("Business name", "", { autocomplete: "organization" }), contact_name: field("Your name", "", { autocomplete: "name" }),
+      phone: field("Mobile phone", "", { type: "tel", autocomplete: "tel", inputmode: "tel" }), email: field("Email", "", { type: "email", autocomplete: "username" }),
+      password: field("Password (at least 10 characters)", "", { type: "password", autocomplete: "new-password" }) };
+    const trade = tradeSelect("");
+    const fields = el("div", "stack"); fields.style.margin = "20px 0 16px"; fields.append(f.business_name, f.contact_name, trade, f.phone, f.email, f.password);
+    const err = el("div", "err"); const go = el("button", "btn", "Start my free trial"); go.type = "submit";
+    const fine = el("p", "note", "14 days free. No card needed. Then from $15.99/month. Cancel anytime."); fine.style.marginTop = "12px";
+    const have = el("p", "note"); have.style.marginTop = "14px"; const a = el("a", null, "Sign in"); a.href = "#"; have.append("Already have an account? ", a);
+    const card = authPage([el("h1", null, "Start your free trial"), el("p", "note", "Jobs, quotes, invoices and your crew in one simple app."), fields, go, err, fine, have]);
+    providers().then((pv) => { if (!pv.google || !document.body.contains(card)) return; const gb = googleButton("Sign up with Google"); gb.style.cssText = "width:100%;margin-top:20px"; card.insertBefore(gb, fields); card.insertBefore(orLine(), fields); fields.style.marginTop = "0"; });
+    card.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = "";
+      const body = { business_name: f.business_name.input.value.trim(), contact_name: f.contact_name.input.value.trim(), trade: trade.input.value, phone: f.phone.input.value, email: f.email.input.value.trim(), password: f.password.input.value };
+      if (!body.business_name || !body.contact_name || !body.phone || !body.email) return (err.textContent = "Fill in every field.");
+      if (body.password.length < 10) return (err.textContent = "Use a password of at least 10 characters.");
+      go.disabled = true; go.textContent = "Setting up…";
+      try {
+        const r = await fetch(SUPABASE_URL + "/functions/v1/pros-signup", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY }, body: JSON.stringify(body) });
+        const res = await r.json().catch(() => ({ ok: false, message: "Couldn't reach Sparrow. Try again." }));
+        if (!res.ok) throw new Error(res.message || "Couldn't create your account.");
+        const { error } = await sb.auth.signInWithPassword({ email: body.email, password: body.password });
+        if (error) throw error;
+        history.replaceState(null, "", location.pathname); toast("Welcome to Sparrow Pros"); route();
+      } catch (ex) { err.textContent = friendly(ex); go.disabled = false; go.textContent = "Start my free trial"; }
+    });
+  }
+
+  // signed in (e.g. with Google) but no business yet
+  function renderSetupBusiness(email) {
+    const f = { business_name: field("Business name", "", { autocomplete: "organization" }), contact_name: field("Your name", "", { autocomplete: "name" }),
+      phone: field("Mobile phone", "", { type: "tel", autocomplete: "tel", inputmode: "tel" }) };
+    const trade = tradeSelect("");
+    const fields = el("div", "stack"); fields.style.margin = "20px 0 16px"; fields.append(f.business_name, f.contact_name, trade, f.phone);
+    const err = el("div", "err"); const go = el("button", "btn", "Start my free trial"); go.type = "submit";
+    const other = btn("Use a different account", "ghost small", signOut); other.style.marginTop = "14px";
+    const card = authPage([el("h1", null, "Set up your business"), el("p", "note", `Signed in as ${email || "you"}. 14 days free, no card needed. Crew member? Open the invite link from your boss instead.`), fields, go, err, other]);
+    card.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = ""; go.disabled = true;
+      try { me = await rpc("pros_signup", { p: { business_name: f.business_name.input.value, contact_name: f.contact_name.input.value, phone: f.phone.input.value, trade: trade.input.value } }); toast("Welcome to Sparrow Pros"); location.hash = ""; route(); }
+      catch (ex) { err.textContent = friendly(ex); go.disabled = false; }
+    });
+  }
+
+  // ---------- customers ----------
+  let custCache = null, custQuery = "";
+  async function loadCustomers() { custCache = await rpc("pros_customers"); return custCache; }
+  async function renderCustomers() {
+    shell([el("h2", null, "Customers"), el("p", "mono", "Loading…")]);
+    try { await loadCustomers(); } catch (e) { return renderFatal(friendly(e)); }
+    drawCustomers();
+  }
+  function drawCustomers() {
+    const hd = el("div", "spread"); hd.append(el("h2", null, "Customers"), btn("New customer", "primary small", () => customerForm(null, () => drawCustomers())));
+    const search = el("input", "search"); search.type = "search"; search.placeholder = "Search name, phone or email"; search.value = custQuery; search.setAttribute("aria-label", "Search customers");
+    const list = el("div", "list-card");
+    const draw = () => {
+      list.replaceChildren(); const q = custQuery.toLowerCase();
+      const rows = (custCache || []).filter((c) => !q || [c.name, c.phone, c.email, c.company].some((x) => String(x || "").toLowerCase().includes(q)));
+      if (!rows.length) list.append(el("div", "li note", custCache && custCache.length ? "No match." : "No customers yet. They're added when you create a job, or tap New customer."));
+      rows.forEach((c) => list.append(li({ initial: (c.name || "?")[0].toUpperCase(), title: c.name + (c.company ? " · " + c.company : ""), sub: [c.phone && prettyPhone(c.phone), c.email, c.addresses[0] && c.addresses[0].city].filter(Boolean).join(" · "),
+        right: el("span", "pill", `${c.jobs} job${c.jobs === 1 ? "" : "s"}`), onClick: () => customerDetail(c) })));
+    };
+    search.addEventListener("input", () => { custQuery = search.value; draw(); });
+    draw();
+    shell([hd, el("p", "muted", "Everyone you've done or quoted work for."), search, list]);
+  }
+  function customerDetail(c) {
+    modal(c.name, (m, close) => {
+      const kv = el("dl", "kv"); const add = (k, v) => { if (!v) return; kv.append(el("dt", null, k)); const dd = el("dd"); if (v instanceof Node) dd.append(v); else dd.textContent = v; kv.append(dd); };
+      add("Phone", c.phone && phoneLink(c.phone));
+      if (c.email) { const a = el("a", null, c.email); a.href = "mailto:" + c.email; add("Email", a); }
+      add("Company", c.company);
+      add("Address", c.addresses.map((a) => [a.unit ? a.unit + "-" + a.address_line : a.address_line, a.city].join(", ")).join("\n"));
+      add("Notes", c.notes); add("Jobs", String(c.jobs));
+      const r = el("div", "row");
+      r.append(btn("New job", "primary small", () => { close(); jobForm(null, c); }), btn("Edit", "small", () => { close(); customerForm(c, () => drawCustomers()); }));
+      m.append(kv, r);
+    });
+  }
+  function customerForm(c, after) {
+    modal(c ? "Edit customer" : "New customer", (m, close) => {
+      const f = { name: field("Name", c ? c.name : "", { autocomplete: "off" }), phone: field("Mobile phone", c ? c.phone : "", { type: "tel", inputmode: "tel" }),
+        email: field("Email", c ? c.email : "", { type: "email" }), company: field("Company (optional)", c ? c.company : ""), notes: field("Notes (optional)", c ? c.notes : "", { textarea: true }) };
+      const form = el("form", "stack"); Object.values(f).forEach((x) => form.append(x));
+      const err = el("div", "err"); const go = el("button", "btn primary", "Save"); go.type = "submit"; form.append(go, err);
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.textContent = ""; go.disabled = true;
+        try {
+          const res = await rpc("pros_customer_save", { p: { id: c ? c.id : "", name: f.name.input.value, phone: f.phone.input.value, email: f.email.input.value, company: f.company.input.value, notes: f.notes.input.value } });
+          custCache = res.customers; close(); toast("Saved"); if (after) after(res);
+        } catch (ex) { err.textContent = friendly(ex); go.disabled = false; }
+      });
+      m.append(form); f.name.input.focus();
+    });
+  }
+
+  // ---------- add or edit a job ----------
+  async function jobForm(j, preset) {
+    if (!custCache) { try { await loadCustomers(); } catch (e) { return toast(friendly(e)); } }
+    modal(j ? "Edit job" : "New job", (m, close) => {
+      const form = el("form", "stack");
+      const title = field("What's the job?", j ? (j.title || j.service) : "", { placeholder: "Fence repair, kitchen reno, deck stain…" });
+      const custSel = selectField("Customer", [["", "Pick a customer"], ["__new", "+ New customer"], ...custCache.map((c) => [c.id, c.name + (c.phone ? " · " + prettyPhone(c.phone) : "")])], j ? j.customer_id : preset ? preset.id : "");
+      const nc = el("div", "grid2"); const ncName = field("Customer name", ""), ncPhone = field("Mobile phone", "", { type: "tel", inputmode: "tel" }), ncEmail = field("Email (optional)", "", { type: "email" });
+      nc.append(ncName, ncPhone, ncEmail); nc.hidden = true;
+      const addr = field("Job address", j ? j.address_line : ""), unit = field("Unit (optional)", j ? j.unit : ""), city = field("City", j ? j.city : ""), postal = field("Postal code (optional)", j ? j.postal_code : "");
+      const ag = el("div", "grid2"); ag.append(addr, unit, city, postal);
+      const startTs = j && (j.scheduled_start || j.window_start);
+      const date = field("Day (optional)", startTs ? localDay(startTs) : "", { type: "date" });
+      const t1 = field("Start time (optional)", j && j.scheduled_start ? hm24(j.scheduled_start) : "", { type: "time" });
+      const t2 = field("End time (optional)", j && j.scheduled_start && j.scheduled_end ? hm24(j.scheduled_end) : "", { type: "time" });
+      const tg = el("div", "grid2"); tg.append(date, t1, t2);
+      const priceL = el("label", "field"); const price = moneyInput(j ? j.price_cents : null, "0"); priceL.append("Agreed price before GST (optional)", price);
+      const notes = field("Notes for you and your crew (optional)", j ? j.notes : "", { textarea: true });
+      const fillAddr = () => { const c = custCache.find((x) => x.id === custSel.input.value); if (c && c.addresses[0] && !addr.input.value) { const a = c.addresses[0]; addr.input.value = a.address_line || ""; unit.input.value = a.unit || ""; city.input.value = a.city || ""; postal.input.value = a.postal_code || ""; } };
+      custSel.input.addEventListener("change", () => { nc.hidden = custSel.input.value !== "__new"; fillAddr(); });
+      if (!j) fillAddr();
+      const err = el("div", "err"); const go = el("button", "btn primary", j ? "Save changes" : "Add job"); go.type = "submit";
+      form.append(title, custSel, nc, ag, tg, priceL, notes, el("p", "muted small", "No day yet? Leave it blank and write a quote first. The job moves to Booked when you set a day or the customer approves."), go, err);
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.textContent = "";
+        let cents = null; try { cents = toCents(price.input.value); } catch (ex) { return (err.textContent = ex.message); }
+        const p = { id: j ? j.id : "", title: title.input.value, address_line: addr.input.value, unit: unit.input.value, city: city.input.value, postal_code: postal.input.value,
+          date: date.input.value, start_time: t1.input.value, end_time: t2.input.value, price_cents: cents, notes: notes.input.value };
+        if (custSel.input.value === "__new") p.customer = { name: ncName.input.value, phone: ncPhone.input.value, email: ncEmail.input.value };
+        else if (custSel.input.value) p.customer_id = custSel.input.value;
+        else return (err.textContent = "Pick a customer or add a new one.");
+        go.disabled = true;
+        try {
+          const res = await rpc("pros_job_save", { p }); custCache = null; close(); toast(j ? "Job saved" : "Job added");
+          if (location.hash === "#jobs") renderJobs(); else location.hash = j ? "jobs" : "job-" + res.id;
+        } catch (ex) { err.textContent = friendly(ex); go.disabled = false; }
+      });
+      m.append(form); if (!j) title.input.focus();
+    });
+  }
+  function jobsHead() {
+    const hd = el("div", "spread"); hd.append(el("h2", null, "Jobs"), btn("New job", "primary small", () => jobForm()));
+    const w = el("div"); w.append(hd, el("p", "muted", "Every job from first quote to paid invoice.")); return w;
+  }
+
+  // ---------- settings for subscribers ----------
+  function renderSubAccount() {
+    const c = me.contractor;
+    const card = (title, desc, fields, keys) => {
+      const f = el("form", "card"); f.append(el("h3", null, title)); if (desc) f.append(el("p", "muted small", desc));
+      const g = el("div", "grid2"); fields.forEach((x) => g.append(x)); f.append(g);
+      const err = el("div", "err"); const save = el("button", "btn primary small", "Save"); save.type = "submit"; save.style.cssText = "justify-self:start;width:auto;margin-top:14px"; f.append(save, err);
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.textContent = ""; save.disabled = true;
+        const p = {}; keys.forEach(([k, fld]) => { p[k] = fld.input.value; });
+        try { me = await rpc("pros_profile_save", { p }); toast("Saved"); save.disabled = false; } catch (ex) { err.textContent = friendly(ex); save.disabled = false; }
+      });
+      return f;
+    };
+    // plan
+    const plan = el("section", "card"); plan.append(el("h3", null, "Your plan"));
+    const left = trialDaysLeft();
+    const status = c.billing_status === "trialing" ? (left > 0 ? `Free trial, ${left} day${left === 1 ? "" : "s"} left.` : "Your free trial has ended.")
+      : c.billing_status === "active" ? `${c.crew_addon ? "Solo + Crew" : "Solo"} plan.` + (c.current_period_end ? ` Renews ${new Date(c.current_period_end).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}.` : "")
+      : c.billing_status === "past_due" ? "Your last payment didn't go through." : c.billing_status === "comped" ? "Free plan from Sparrow." : "No plan yet.";
+    plan.append(el("p", null, status));
+    const prices = el("div", "grid2");
+    const pcard = (name, price, text) => { const d = el("div", "card"); d.style.padding = "14px"; d.append(el("b", null, name), el("div", "big", price), el("p", "muted small", text)); return d; };
+    prices.append(pcard("Solo", "$15.99/month", "Jobs, customers, quotes, invoices, calendar."), pcard("+ Crew", "+$11.99/month", "Up to 10 crew: clock in, schedules, reports, photos, messages and the crew assistant."));
+    plan.append(prices, el("p", "muted small", "Prices in CAD before GST (5%) and PST (7%)."));
+    const billWrap = el("div"); billWrap.id = "billing-actions"; plan.append(billWrap);
+    if (typeof drawBilling === "function") drawBilling(billWrap);
+    else billWrap.append(el("p", "small", "Online payment is being set up. Your trial keeps running in the meantime."));
+
+    const biz = { business_name: field("Business name", c.business_name), contact_name: field("Your name", c.contact_name), phone: field("Phone", prettyPhone(c.phone), { type: "tel" }),
+      address_line: field("Business address (optional)", c.address_line), city: field("City", c.city), postal_code: field("Postal code", c.postal_code), gst_number: field("GST number (if registered)", c.gst_number) };
+    const trade = tradeSelect(c.trade); biz.trade = trade;
+    const inv = { invoice_display_name: field("Name on quotes and invoices", c.invoice_display_name), invoice_prefix: field("Invoice number prefix", c.invoice_prefix),
+      invoice_website: field("Website (optional)", c.invoice_website), brand_color: field("Brand colour", c.brand_color || "#f2541b", { type: "color" }),
+      invoice_terms: field("Terms shown on quotes and invoices (optional)", c.invoice_terms, { textarea: true, full: true }) };
+    const pay = { payout_interac_email: field("e-Transfer email", c.payout_interac_email, { type: "email" }),
+      pay_instructions: field("Other ways to pay (optional)", c.pay_instructions, { textarea: true, full: true, placeholder: "Cheque payable to …, due within 14 days." }) };
+    const keys = (o) => Object.entries(o);
+    const acct = el("section", "card"); acct.append(el("h3", null, "Sign-in"), el("p", "muted small", "Signed in as " + (c.email || "")));
+    const r = el("div", "row"); r.append(btn("Sign out", "small", signOut)); acct.append(r);
+    shell([el("h2", null, "Settings"), plan,
+      card("Business", null, Object.values(biz), keys(biz)),
+      card("Quotes and invoices", "How your quotes and invoices look to customers.", Object.values(inv), keys(inv)),
+      card("Getting paid", "Shown on every invoice so customers know how to pay you. Money goes straight to you, never through Sparrow.", Object.values(pay), keys(pay)),
+      acct]);
   }
 
   // ---------- owner home ----------
@@ -1586,6 +1835,11 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     const c = me.contractor; const first = (c.contact_name || "").split(" ")[0];
     const head = el("div", "page-head"); head.append(el("span", "date", todayLong()), el("h1", null, greet() + (first ? ", " + first : "")));
     const parts = [head];
+    if (isSub()) {
+      const pb = planBanner(); if (pb) parts.push(pb);
+      const qa = el("div", "row"); qa.append(btn("New job", "primary", () => jobForm()), btn("New customer", "", () => customerForm(null, () => renderOwnerHome())));
+      parts.push(qa);
+    }
     if (c.status !== "active") {
       const done = SECTIONS.filter((s) => me.checks[s.key]).length;
       const b = el("section", "summary");

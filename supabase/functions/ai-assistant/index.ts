@@ -8,7 +8,7 @@ const URL_ = Deno.env.get('SUPABASE_URL')!
 const admin = createClient(URL_, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 const KEY = (Deno.env.get('ANTHROPIC_API_KEY') ?? '').trim()
 const MODELS = { crew: 'claude-haiku-5-5', owner: 'claude-sonnet-5-5' } as const
-const DAILY_LIMIT = { crew: 150, owner: 300 }
+const DAILY_LIMIT = { crew: 30, owner: 0 } // the assistant is for crew only
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -158,11 +158,7 @@ Deno.serve(async (req) => {
       contractorId = (await admin.from('team_members').select('contractor_id').eq('id', memberId).single()).data?.contractor_id
       ctx.snapshot = home ? { clocked_in: home.open_entry, today_hours: home.today_hours, jobs: (home.jobs ?? []).map(slimJob), shifts: (home.shifts ?? []).slice(0, 12).map((s: Any) => ({ id: s.id, day: s.day, starts_at: s.starts_at, ends_at: s.ends_at, job_id: s.job_id, notes: s.notes })), reported_today: home.reported_today, problems: (home.alerts ?? []).slice(0, 5), time_off: home.time_off, locations: home.locations, time_off_notice_days: home.notice_days } : {}
     } else if (who?.kind === 'owner') {
-      kind = 'owner'; contractorId = who.contractor_id
-      const [{ data: me }, { data: team }] = await Promise.all([db.rpc('contractor_me'), db.rpc('team_list')])
-      const c = me?.contractor ?? me ?? {}
-      ctx.name = String(c.contact_name ?? '').split(' ')[0] || 'there'; ctx.business = c.invoice_display_name ?? c.business_name ?? 'their business'
-      ctx.crew = (Array.isArray(team) ? team : team?.team ?? []).map((m: Any) => ({ id: m.id, name: m.full_name, active: m.active, joined: !!m.joined_at || m.status === 'joined' }))
+      return json({ error: 'The assistant is part of the crew app.' }, 403)
     } else return json({ error: 'Please sign in again.' }, 403)
 
     // daily limit
@@ -197,7 +193,7 @@ Deno.serve(async (req) => {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: MODELS[kind], max_tokens: 1024, system: system(kind, ctx), tools: tools.map(({ name, description, input_schema }) => ({ name, description, input_schema })), messages }),
+        body: JSON.stringify({ model: MODELS[kind], max_tokens: 1024, system: system(kind, ctx), tools: tools.map(({ name, description, input_schema }, i, all) => (i === all.length - 1 ? { name, description, input_schema, cache_control: { type: 'ephemeral' } } : { name, description, input_schema })), messages }),
       })
       const res = await r.json()
       if (!r.ok) { console.error('anthropic', r.status, JSON.stringify(res).slice(0, 400)); throw new Error('assistant unavailable') }

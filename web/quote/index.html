@@ -115,15 +115,16 @@ textarea { width: 100%; border: 1px solid var(--rule); border-radius: 10px; padd
   }
 
   async function load() {
-    if (token.length < 32) return fatal("This link isn't complete", "Open the quote from the WhatsApp message again, or ask for a new link.");
+    if (token.length < 32) return fatal("This link isn't complete", "Open the quote from the message you got again, or ask for a new link.");
     let d;
     try { d = await call("quote_public", { p_token: token }); } catch (e) { return fatal("Couldn't load your quote", e.message); }
-    if (!d || !d.ok) return fatal("Quote not found", "This link may be old. Ask on WhatsApp and we'll send a fresh one.");
+    if (!d || !d.ok) return fatal("Quote not found", "This link may be old. Ask the business that sent it for a fresh one.");
     render(d);
   }
 
   function render(d) {
     const q = d.quote, k = d.contractor;
+    const own = !!(d.job && d.job.own); const reach = k.name + (k.phone ? " at " + phone(k.phone) : k.email ? " at " + k.email : "");
     if (k.color && /^#[0-9a-f]{6}$/i.test(k.color)) {
       document.documentElement.style.setProperty("--brand", k.color);
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(k.color.slice(i, i + 2), 16));
@@ -191,12 +192,12 @@ textarea { width: 100%; border: 1px solid var(--rule); border-radius: 10px; padd
     const panel = el("section", "panel");
     if (q.status === "accepted") {
       const s = el("div", "state good");
-      s.append(el("h2", null, "You approved this quote"), el("p", null, `${k.name} will do the work on ${dlong(q.chosen_date)}.` + (q.deposit_cents > 0 ? ` Sparrow will send you the ${money(q.deposit_cents)} deposit details on WhatsApp.` : " They'll confirm the start time with you.")));
+      s.append(el("h2", null, "You approved this quote"), el("p", null, (q.chosen_date ? `${k.name} will do the work on ${dlong(q.chosen_date)}.` : `Thanks! ${k.name} will be in touch to set the date.`) + (q.deposit_cents > 0 ? ` Sparrow will send you the ${money(q.deposit_cents)} deposit details on WhatsApp.` : q.chosen_date ? " They'll confirm the start time with you." : "")));
       panel.append(s);
     } else if (q.status === "declined") {
-      const s = el("div", "state crit"); s.append(el("h2", null, "You declined this quote"), el("p", "small", "Changed your mind or want changes? Message Sparrow on WhatsApp.")); panel.append(s);
+      const s = el("div", "state crit"); s.append(el("h2", null, "You declined this quote"), el("p", "small", own ? `Changed your mind or want changes? Contact ${reach}.` : "Changed your mind or want changes? Message Sparrow on WhatsApp.")); panel.append(s);
     } else if (q.status === "expired") {
-      const s = el("div", "state warn"); s.append(el("h2", null, "This quote has expired"), el("p", "small", "Message Sparrow on WhatsApp and we'll ask for an updated quote.")); panel.append(s);
+      const s = el("div", "state warn"); s.append(el("h2", null, "This quote has expired"), el("p", "small", own ? `Contact ${reach} for an updated quote.` : "Message Sparrow on WhatsApp and we'll ask for an updated quote.")); panel.append(s);
     } else {
       buildDecision(panel, d);
     }
@@ -206,15 +207,16 @@ textarea { width: 100%; border: 1px solid var(--rule); border-radius: 10px; padd
     tools.append(dl, el("span", "small", "Choose “Save as PDF” to keep a copy."));
     panel.append(tools);
 
-    const by = el("p", "by no-print"); by.append("Sent through Sparrow · ");
-    const a = el("a", null, "sparrowlabs.ca"); a.href = "https://sparrowlabs.ca"; by.append(a);
+    const by = el("p", "by no-print"); by.append(own ? "Sent with Sparrow Pros · " : "Sent through Sparrow · ");
+    const a = el("a", null, own ? "pros.sparrowlabs.ca" : "sparrowlabs.ca"); a.href = own ? "https://pros.sparrowlabs.ca" : "https://sparrowlabs.ca"; by.append(a);
     root.append(sheet, panel, by);
   }
 
   function buildDecision(panel, d) {
     const q = d.quote;
-    panel.append(el("h2", null, "Approve and pick a date"));
-    panel.append(el("p", "small", "Choose the day that suits you. " + (q.deposit_cents > 0 ? `After you approve, Sparrow sends the ${money(q.deposit_cents)} deposit details on WhatsApp.` : "No deposit is needed for this job.")));
+    const noDates = !(q.offered_dates || []).length;
+    panel.append(el("h2", null, noDates ? "Approve this quote" : "Approve and pick a date"));
+    panel.append(el("p", "small", noDates ? `Approve it and ${d.contractor.name} will be in touch to set the date.` : "Choose the day that suits you. " + (q.deposit_cents > 0 ? `After you approve, Sparrow sends the ${money(q.deposit_cents)} deposit details on WhatsApp.` : "No deposit is needed for this job.")));
     let chosen = null;
     const dates = el("div", "dates"); dates.setAttribute("role", "group"); dates.setAttribute("aria-label", "Available dates");
     (q.offered_dates || []).forEach((iso) => {
@@ -231,10 +233,10 @@ textarea { width: 100%; border: 1px solid var(--rule); border-radius: 10px; padd
     const approve = el("button", "btn primary", `Approve quote · ${money(q.total_cents)}`); approve.type = "button";
     const declineBtn = el("button", "btn link", "Decline this quote"); declineBtn.type = "button";
     const row = el("div", "row"); row.append(approve, declineBtn);
-    panel.append(dates, lab, note, row, err);
+    if (noDates) panel.append(lab, note, row, err); else panel.append(dates, lab, note, row, err);
 
     approve.addEventListener("click", async () => {
-      if (!chosen) { err.textContent = "Pick a date first."; return; }
+      if (!chosen && !noDates) { err.textContent = "Pick a date first."; return; }
       approve.disabled = true; err.textContent = "";
       try {
         const r = await call("quote_respond", { p_token: token, p_action: "approve", p_date: chosen, p_note: note.value || null });
