@@ -1372,7 +1372,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
     {
       const first = (job.customer_name || "").split(" ")[0];
       const msg = `Hi ${first}, here's your quote ${q.ref} from ${bizName()} for ${job.service}: ${q.link}`;
-      row.append(...shareButtons(job.customer_phone, job.customer_email, msg, `Quote ${q.ref} from ${bizName()}`));
+      row.append(...shareButtons(job.customer_phone, job.customer_email, msg, `Quote ${q.ref} from ${bizName()}`, { kind: "quote", jobId: job.id }));
     }
     const open = el("a", "btn small", "Open quote"); open.href = q.link; open.target = "_blank"; open.rel = "noopener";
     row.append(open);
@@ -1614,7 +1614,7 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
       const first = (j.customer_name || "").split(" ")[0];
       const biz = bizName();
       const msg = inv.status === "paid" ? `Hi ${first}, thanks for choosing ${biz}. Here's your receipt ${inv.number}: ${inv.link}` : `Hi ${first}, thanks for choosing ${biz}. Here's your invoice ${inv.number} for ${j.service}: ${inv.link}`;
-      row.append(...shareButtons(j.customer_phone, j.customer_email, msg, (inv.status === "paid" ? "Receipt " : "Invoice ") + inv.number + " from " + biz));
+      row.append(...shareButtons(j.customer_phone, j.customer_email, msg, (inv.status === "paid" ? "Receipt " : "Invoice ") + inv.number + " from " + biz, { kind: "invoice", jobId: j.id }));
     }
     const open = el("a", "btn small", "Open invoice"); open.href = inv.link; open.target = "_blank"; open.rel = "noopener";
     row.append(open); box.append(row);
@@ -1628,15 +1628,37 @@ span.chip button { border: 0; background: transparent; cursor: pointer; color: v
   const intlDigits = (p) => { const d = digitsOf(p); return d.length === 10 ? "1" + d : d; };
   const prettyPhone = (p) => { const d = digitsOf(p).replace(/^1(?=\d{10}$)/, ""); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
   function phoneLink(p) { const a = el("a", null, prettyPhone(p)); a.href = "tel:+" + intlDigits(p); return a; }
-  function shareButtons(phone, email, msg, subject) {
+  function shareButtons(phone, email, msg, subject, doc) {
     const out = [];
     const mk = (label, href, primary) => { const a = el("a", "btn small" + (primary ? " primary" : ""), label); a.href = href; if (/^https/.test(href)) { a.target = "_blank"; a.rel = "noopener"; } return a; };
     if (isSub()) {
       if (phone) out.push(mk("Send by text", "sms:+" + intlDigits(phone) + "?&body=" + encodeURIComponent(msg), true));
-      if (email) out.push(mk("Send by email", "mailto:" + email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg), !phone));
+      if (doc) out.push(btn("Send by email", "small" + (phone ? "" : " primary"), () => emailDoc(doc.kind, doc.jobId, email)));
+      else if (email) out.push(mk("Send by email", "mailto:" + email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg), !phone));
       if (phone) out.push(mk("WhatsApp", "https://wa.me/" + intlDigits(phone) + "?text=" + encodeURIComponent(msg)));
     } else if (phone) out.push(mk("Send on WhatsApp", "https://wa.me/" + digitsOf(phone) + "?text=" + encodeURIComponent(msg), true));
     return out;
+  }
+  // email a quote or invoice to the customer from Sparrow's mailbox (replies go to the business)
+  function emailDoc(kind, jobId, email) {
+    modal(kind === "quote" ? "Email the quote" : "Email the invoice", (m, close) => {
+      const form = el("form", "stack");
+      const to = field("Customer's email", email || "", { type: "email", autocomplete: "off" });
+      const note = field("Add a note (optional)", "", { textarea: true, placeholder: kind === "quote" ? "Thanks for having us out. Any questions, just reply." : "Thanks for your business!" });
+      const err = el("div", "err"); const go = el("button", "btn primary", "Send email"); go.type = "submit";
+      form.append(to, note, el("p", "muted small", `It comes from "${bizName()} via Sparrow Pros" with your logo, and replies go to ${me.contractor.email || "your email"}.`), go, err);
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.textContent = "";
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.input.value.trim())) return (err.textContent = "Enter the customer's email.");
+        go.disabled = true; go.textContent = "Sending…";
+        try {
+          const r = await authedFetch("/functions/v1/pros-mail", { action: "doc_email", kind, job_id: jobId, email: to.input.value.trim(), note: note.input.value });
+          if (!r.ok) throw new Error(r.message || "Couldn't send the email.");
+          close(); toast(r.message || "Email sent");
+        } catch (ex) { err.textContent = friendly(ex); go.disabled = false; go.textContent = "Send email"; }
+      });
+      m.append(form); if (!email) to.input.focus();
+    });
   }
   const TRADES = ["General contracting", "Renovation", "Carpentry", "Fencing and decks", "Landscaping", "Painting", "Plumbing", "Electrical", "HVAC", "Roofing", "Concrete", "Flooring", "Drywall", "Cleaning", "Handyman", "Other"];
   function selectField(label, options, value) {
