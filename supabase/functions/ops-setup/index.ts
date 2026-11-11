@@ -46,5 +46,16 @@ Deno.serve(async (req) => {
     if (b.dry_run) return json({ ok: true, dry_run: true, before, after });
     return json({ ok: true, result: await put(base, h, b.path, text), before });
   }
+  // copy a finished file from the Vercel build of the GitHub repo (e.g. https://<project>.vercel.app/index.html)
+  if (b.action === "mirror") {
+    const src = String(b.src_url || "");
+    if (!/^https:\/\/[a-z0-9-]+\.vercel\.app\//.test(src)) return json({ ok: false, error: "src_url must be a vercel.app address" }, 400);
+    const r = await fetch(src, { headers: { "cache-control": "no-cache" } });
+    if (!r.ok) return json({ ok: false, error: "download", status: r.status });
+    const text = await r.text();
+    const got = await sha(text);
+    if (b.expect_sha && got !== b.expect_sha) return json({ ok: false, error: "sha_mismatch", got });
+    return json({ ok: true, result: await put(base, h, b.path, text) });
+  }
   return json({ ok: false, error: "unknown action" }, 400);
 });
