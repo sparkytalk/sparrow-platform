@@ -52,6 +52,15 @@
   .nav nav a.link { padding: 8px 12px; border-radius: 999px; text-decoration: none; font-weight: 500; color: var(--muted); font-size: 15px; }
   .nav nav a.link:hover { color: var(--ink); background: var(--soft); }
   @media (max-width: 760px) { .nav nav a.link.hide-m { display: none; } }
+  .brand, .brand b, .nav nav, .nav nav a { white-space: nowrap; }
+  .brand { flex-shrink: 0; }
+  @media (max-width: 420px) {
+    .nav .wrap { gap: 8px; height: 60px; }
+    .brand { gap: 8px; } .brand img { width: 30px; height: 30px; } .brand b { font-size: 18px; }
+    .nav nav { gap: 2px; } .nav nav a.link { padding: 7px 8px; font-size: 14px; }
+    .nav nav .btn { padding: 9px 14px; font-size: 14px; }
+  }
+  @media (max-width: 350px) { #signin { display: none; } }
 
   /* hero */
   .hero { padding: 56px 0 40px; }
