@@ -8,14 +8,17 @@
 <title>Your quote</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap">
 <style>
+@font-face { font-family: "Archivo Expanded"; src: url("/fonts/archivo-expanded-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Archivo Expanded"; src: url("/fonts/archivo-expanded-800.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+
 /* A quote is a paper document: one light sheet, branded by the contractor's colour, with the decision panel below it. */
 :root {
   --desk: #eef1ef; --paper: #ffffff; --ink: #18211c; --muted: #5d6b63; --faint: #8d9a93; --rule: #e1e7e3;
   --brand: #1d7350; --brand-ink: #ffffff; --good: #1d7350; --good-soft: #e2f2ea; --warn: #9a5a12; --warn-soft: #fbefdc; --crit: #a83229; --crit-soft: #fbe6e3;
-  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
-  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Archivo Expanded", Archivo, system-ui, sans-serif;
+  --body: Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
